@@ -1,36 +1,265 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🎵 Bandly - The Artist Booking Platform
 
-## Getting Started
+A modern, all-in-one platform for discovering, booking, and connecting with talented musicians and artists worldwide.
 
-First, run the development server:
+## ✨ Features
+
+### 🏠 **Home Dashboard**
+- Welcome overview with featured artists
+- Quick navigation to all major features
+- Recent bookings summary
+- Call-to-action buttons
+
+### 🎤 **Artist Discovery**
+- Browse and search for artists by name
+- Filter by genre (Rock, Electronic, Jazz, R&B, Country, Hip-Hop)
+- View artist ratings, followers, and verified status
+- Quick access to detailed profiles
+
+### 👤 **Artist Profiles**
+- Comprehensive artist information with bio
+- Audio samples showcase
+- Customer reviews and ratings
+- Availability calendar
+- Social media links (Spotify, Instagram, SoundCloud)
+- Direct booking options
+
+### 📅 **Booking System**
+- Create and manage event bookings
+- Filter bookings by status (Pending, Confirmed, Completed)
+- Track booking details (date, location, budget, duration)
+- Cancel pending bookings
+- Status indicators with color coding
+
+### 💬 **Content Management & Community**
+- **Messages Tab**: Real-time chat between artists and bookers
+- **Collaborations Tab**: Manage collaboration projects with other artists
+- **Feed Tab**: Share updates, samples, and announcements with the community
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js 18.17 or later
+- npm or yarn package manager
+
+### Installation
+
+```bash
+# Clone the repository
+cd bandly
+
+# Install dependencies
+npm install
+```
+
+### Development
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Build for Production
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+npm start
+```
 
-## Learn More
+### Lint Code
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run lint
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 📁 Project Structure
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+bandly/
+├── app/                      # Next.js App Router
+│   ├── page.tsx             # Home Dashboard
+│   ├── layout.tsx           # Root Layout
+│   ├── artists/             # Artist Pages
+│   ├── bookings/            # Booking Pages
+│   └── content/             # Content & Community
+├── components/              # Reusable Components
+│   └── Navigation.tsx       # Global Navigation
+├── types/                   # TypeScript Interfaces
+├── ARCHITECTURE.md          # Detailed Architecture Documentation
+└── package.json             # Dependencies & Scripts
+```
 
-## Deploy on Vercel
+## 🎨 Tech Stack
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Framework**: [Next.js 16](https://nextjs.org/) - React framework for production
+- **Language**: [TypeScript](https://www.typescriptlang.org/) - Type-safe JavaScript
+- **Styling**: [Tailwind CSS 4](https://tailwindcss.com/) - Utility-first CSS
+- **Runtime**: [React 19](https://react.dev/) - Modern React features
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 📖 Documentation
+
+For detailed architecture and feature documentation, see [ARCHITECTURE.md](./ARCHITECTURE.md).
+
+### Key Sections:
+- Project structure and organization
+- Feature breakdown and implementations
+- Type definitions and interfaces
+- Data flow and state management
+- Performance optimization tips
+- Security considerations
+- Deployment guidelines
+
+## 🎯 Routes
+
+| Route | Purpose |
+|-------|---------|
+| `/` | Home Dashboard |
+| `/artists` | Artist Listing & Search |
+| `/artists/[id]` | Artist Profile Details |
+| `/bookings` | Booking Management |
+| `/content` | Messages, Collaborations, Feed |
+
+## 🔧 Available Commands
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server |
+| `npm run build` | Build for production |
+| `npm start` | Start production server |
+| `npm run lint` | Run ESLint |
+
+## 🎨 Design Highlights
+
+- **Dark Theme**: Sleek dark mode optimized for artists
+- **Gradient Accents**: Purple and pink gradients for modern look
+- **Responsive Design**: Mobile-first, works on all devices
+- **Interactive Components**: Smooth transitions and hover effects
+- **Accessibility**: Semantic HTML and proper contrast ratios
+
+## 📊 Features by Page
+
+### Home (/)
+- Featured artists carousel
+- Recent bookings overview
+- Quick stats and metrics
+- Easy navigation to main features
+
+### Artists (/artists)
+- Real-time search functionality
+- Genre-based filtering
+- Artist card display with ratings
+- Link to detailed profiles
+
+### Artist Detail (/artists/[id])
+- Complete artist information
+- Audio sample player
+- Customer reviews section
+- Availability display
+- Social media integration
+- Booking button
+
+### Bookings (/bookings)
+- Booking list with filters
+- Create new booking modal
+- Status tracking
+- Booking management actions
+- Activity history
+
+### Content (/content)
+**Messages Tab:**
+- Conversation list
+- Real-time messaging
+- Unread indicators
+- Search conversations
+
+**Collaborations Tab:**
+- Active projects
+- Project management
+- Collaborator tracking
+- Create new projects
+
+**Feed Tab:**
+- Community posts
+- Share updates
+- Like and comment
+- Engagement metrics
+
+## 🔐 Security Notes
+
+This is a frontend template. For production deployment, implement:
+- User authentication (JWT, OAuth)
+- API key protection
+- Data validation and sanitization
+- CORS configuration
+- Rate limiting
+- Database security
+
+## 🚀 Deployment
+
+### Vercel (Recommended)
+```bash
+npm install -g vercel
+vercel
+```
+
+### Other Platforms
+- Netlify
+- AWS Amplify
+- Docker + Cloud Run
+- Any Node.js hosting
+
+## 📝 Type Safety
+
+The project uses TypeScript with strict mode enabled. Key interfaces include:
+- `Artist` - Artist profile information
+- `Booking` - Event booking details
+- `ChatMessage` - Message in conversations
+- `User` - User account information
+- `Conversation` - Chat conversation data
+
+## 🎓 Learning Resources
+
+- [Next.js Documentation](https://nextjs.org/docs)
+- [React Documentation](https://react.dev)
+- [TypeScript Handbook](https://www.typescriptlang.org/docs)
+- [Tailwind CSS Docs](https://tailwindcss.com/docs)
+
+## 🛣️ Roadmap
+
+### Phase 2
+- User authentication & profiles
+- Payment integration
+- Real-time notifications
+- Video streaming
+
+### Phase 3
+- AI recommendations
+- Mobile app
+- Live streaming
+- Analytics dashboard
+
+## 💡 Contributing
+
+To contribute to Bandly:
+
+1. Follow the existing code structure
+2. Use TypeScript for type safety
+3. Use Tailwind CSS for styling
+4. Test components locally
+5. Keep components reusable
+
+## 📄 License
+
+This project is part of the Bandly platform.
+
+## 📧 Support
+
+For questions or issues, please refer to the [ARCHITECTURE.md](./ARCHITECTURE.md) documentation.
+
+---
+
+**Built with ❤️ for musicians and artists worldwide**
+
+**Version**: 1.0.0  
+**Last Updated**: December 2024
