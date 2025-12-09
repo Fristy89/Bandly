@@ -1,12 +1,24 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import Image from 'next/image';
+import { usePathname, useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
+import { useState } from 'react';
 
 export default function Navigation() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, logout } = useAuth();
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const isActive = (path: string) => pathname === path;
+
+  const handleLogout = () => {
+    logout();
+    setShowProfileMenu(false);
+    router.push('/');
+  };
 
   return (
     <nav className="fixed top-0 w-full bg-black text-white shadow-lg z-50">
@@ -52,10 +64,66 @@ export default function Navigation() {
             </Link>
           </div>
 
-          <div className="flex items-center space-x-4">
-            <button className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 transition-colors text-sm font-medium">
-              Sign In
-            </button>
+          <div className="flex items-center space-x-4 relative">
+            {user ? (
+              <>
+                <button
+                  onClick={() => setShowProfileMenu(!showProfileMenu)}
+                  className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-gray-900 transition-colors"
+                >
+                  <Image
+                    src={user.image}
+                    alt={user.name}
+                    width={32}
+                    height={32}
+                    className="w-8 h-8 rounded-full"
+                    unoptimized
+                  />
+                  <span className="hidden sm:inline text-sm font-medium">{user.name}</span>
+                </button>
+
+                {showProfileMenu && (
+                  <div className="absolute right-0 mt-2 w-48 bg-gray-900 rounded-lg shadow-xl py-2 top-12">
+                    <Link
+                      href="/profile"
+                      className="block px-4 py-2 hover:bg-gray-800 transition-colors"
+                      onClick={() => setShowProfileMenu(false)}
+                    >
+                      👤 My Profile
+                    </Link>
+                    <Link
+                      href="/artist-bio"
+                      className="block px-4 py-2 hover:bg-gray-800 transition-colors"
+                      onClick={() => setShowProfileMenu(false)}
+                    >
+                      ✍️ Artist Bio
+                    </Link>
+                    <hr className="my-2 border-gray-700" />
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-800 transition-colors text-red-400"
+                    >
+                      🚪 Logout
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="px-4 py-2 rounded-lg text-gray-300 hover:text-white transition-colors text-sm font-medium"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/signup"
+                  className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 transition-colors text-sm font-medium"
+                >
+                  Sign Up
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>
