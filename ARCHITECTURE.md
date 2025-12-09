@@ -28,7 +28,7 @@ This document explains the app's structure, features, and how everything works t
 bandly/
 ├── app/                          # Next.js App Router
 │   ├── page.tsx                 # Home Dashboard
-│   ├── layout.tsx               # Root Layout
+│   ├── layout.tsx               # Root Layout with AuthProvider
 │   ├── globals.css              # Global Styles
 │   ├── favicon.ico              # Favicon
 │   ├── artists/                 # Artist Pages
@@ -37,10 +37,20 @@ bandly/
 │   │       └── page.tsx        # Artist Detail Page
 │   ├── bookings/                # Booking Pages
 │   │   └── page.tsx            # Booking Management
-│   └── content/                 # Content & Community
-│       └── page.tsx            # Messages, Collaborations, Feed
+│   ├── content/                 # Content & Community
+│   │   └── page.tsx            # Messages, Collaborations, Feed
+│   ├── login/                   # Authentication
+│   │   └── page.tsx            # Login Page
+│   ├── signup/                  # User Registration
+│   │   └── page.tsx            # Signup Page
+│   ├── profile/                 # User Profile
+│   │   └── page.tsx            # Profile Management
+│   └── artist-bio/              # Artist Bio Management
+│       └── page.tsx            # Bio Editor & Publishing
 ├── components/                  # Reusable Components
 │   └── Navigation.tsx           # Global Navigation Bar
+├── context/                     # React Context & State Management
+│   └── AuthContext.tsx          # Authentication & User State
 ├── types/                       # TypeScript Definitions
 │   └── index.ts                # All interfaces & types
 ├── public/                      # Static Assets
@@ -54,6 +64,80 @@ bandly/
 ---
 
 ## Features
+
+### 0. **Authentication System**
+
+#### **Signup Page** (`/signup`)
+- Create new user account with email and password
+- Account type selection (Artist, Booking Agent, Fan)
+- Password confirmation validation
+- Automatic avatar generation via DiceBear API
+- Form validation with error messages
+
+**Key Features:**
+- Email validation
+- Password strength requirements
+- Account type selection affects permissions
+- Auto-generated profile avatar
+
+#### **Login Page** (`/login`)
+- Email-based login
+- Form validation
+- Persistent session using localStorage
+- Error handling for invalid credentials
+- Redirect to home on successful login
+
+**Key Features:**
+- Email validation
+- Error message display
+- Automatic redirect for authenticated users
+- Session persistence
+
+#### **Profile Page** (`/profile`)
+- View current user information
+- Edit name, email, and bio
+- Display account type and member since date
+- Link to artist bio management (for artists only)
+- Real-time save functionality
+
+**Key Features:**
+- Editable profile fields
+- Account type display
+- Artist bio access
+- Success notifications
+
+#### **Artist Bio Management** (`/artist-bio`)
+Two-tab interface for comprehensive artist profiles:
+
+**Tab 1: Bio Information**
+- Short bio (100 character limit)
+- Long bio with full description
+- Genre tags (add/remove dynamically)
+- Years active
+- Achievements/awards list
+- Musical influences
+- Real-time save to localStorage
+
+**Tab 2: Connect & Publish**
+- Connect to 5 streaming/social platforms:
+  - Spotify
+  - Instagram
+  - SoundCloud
+  - YouTube
+  - TikTok
+- View connection status for each platform
+- Publish complete bio to multiple platforms simultaneously
+- Track last published timestamp
+- Visual status indicators
+
+**Key Features:**
+- Platform connection management
+- Multi-platform publishing
+- Real-time status updates
+- Success notifications
+- Access control (artists only)
+
+---
 
 ### 1. **Home Dashboard** (`/`)
 - Welcome banner with app description
@@ -168,37 +252,107 @@ Three main tabs for community engagement:
 ### Component Hierarchy
 
 ```
-RootLayout
-├── Navigation
+RootLayout (with AuthProvider)
+├── Navigation (shows auth status, profile/logout links)
 └── Page Components
-    ├── Home
-    ├── Artists Listing
-    ├── Artist Detail
-    ├── Bookings
-    └── Content
+    ├── Login / Signup (public)
+    ├── Home / Profile / Artist-Bio (auth-gated)
+    ├── Artists Listing / Detail (public)
+    ├── Bookings (auth-gated)
+    └── Content (auth-gated)
 ```
+
+### State Management Architecture
+
+**Global Auth State (AuthContext)**
+```
+AuthProvider
+├── user: UserProfile | null
+├── isAuthenticated: boolean
+├── isLoading: boolean
+├── Methods:
+│   ├── signup()
+│   ├── login()
+│   ├── logout()
+│   ├── updateProfile()
+│   ├── updateArtistBio()
+│   ├── connectPlatform()
+│   ├── disconnectPlatform()
+│   └── publishBio()
+└── localStorage persistence
+```
+
+**Local Component State**
+- Form data (login, signup, profile editing)
+- UI state (modals, tabs, loading indicators)
+- Temporary UI feedback (success messages, errors)
 
 ### Data Flow
 
-1. **Static Data**: Currently, all data is stored in component state using mock data
-2. **User Interactions**: State updates trigger re-renders
-3. **Navigation**: Next.js Router handles page navigation
-4. **Forms**: Controlled components with local state management
+1. **Authentication Flow**:
+   ```
+   User Input → Form Validation → Auth Action → localStorage → Context Update → UI Re-render → Redirect
+   ```
+
+2. **Artist Bio Publishing**:
+   ```
+   User Input → Save Bio → Update Context → localStorage → Show Publishing Status → Simulate Publish → Update Status
+   ```
+
+3. **Protected Routes**:
+   ```
+   Component Mount → Check useAuth() → isAuthenticated? → Render or Redirect to /login
+   ```
 
 ### Future Backend Integration
 
 For production, implement:
 - REST API or GraphQL endpoints
 - Database (PostgreSQL, MongoDB, etc.)
-- Authentication system
+- JWT-based authentication
 - Real-time messaging (WebSockets)
 - File upload handling for media
+- API endpoints for platform publishing integration
 
 ---
 
 ## Type Definitions
 
-Located in `types/index.ts`, the following interfaces define the app's data structure:
+Located in `types/index.ts` and `context/AuthContext.tsx`, the following interfaces define the app's data structure:
+
+### **UserProfile** (AuthContext)
+```typescript
+interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  type: 'artist' | 'booking_agent' | 'fan';
+  image: string;
+  bio?: string;
+  artistBio?: {
+    shortBio: string;
+    longBio: string;
+    genres: string[];
+    yearsActive: string;
+    achievements: string[];
+    influences: string[];
+  };
+  socials: {
+    spotify?: string;
+    instagram?: string;
+    soundcloud?: string;
+    youtube?: string;
+    tiktok?: string;
+  };
+  publishedPlatforms: Array<{
+    platform: string;
+    status: 'connected' | 'disconnected' | 'publishing';
+    lastPublished?: Date;
+  }>;
+  verified: boolean;
+  createdAt: Date;
+}
+```
 
 ### **Artist**
 ```typescript
@@ -283,26 +437,36 @@ interface Conversation {
 
 ### Route Structure
 
-| Route | Component | Purpose |
-|-------|-----------|---------|
-| `/` | `app/page.tsx` | Home Dashboard |
-| `/artists` | `app/artists/page.tsx` | Artist Listing & Search |
-| `/artists/[id]` | `app/artists/[id]/page.tsx` | Artist Details |
-| `/bookings` | `app/bookings/page.tsx` | Booking Management |
-| `/content` | `app/content/page.tsx` | Messages, Collaborations, Feed |
+| Route | Component | Purpose | Auth Required | User Type |
+|-------|-----------|---------|---|---|
+| `/` | `app/page.tsx` | Home Dashboard | No | Any |
+| `/login` | `app/login/page.tsx` | User Login | No | None |
+| `/signup` | `app/signup/page.tsx` | User Registration | No | None |
+| `/profile` | `app/profile/page.tsx` | User Profile Management | Yes | Any |
+| `/artist-bio` | `app/artist-bio/page.tsx` | Artist Bio & Publishing | Yes | Artist only |
+| `/artists` | `app/artists/page.tsx` | Artist Listing & Search | No | Any |
+| `/artists/[id]` | `app/artists/[id]/page.tsx` | Artist Details | No | Any |
+| `/bookings` | `app/bookings/page.tsx` | Booking Management | Yes | Any |
+| `/content` | `app/content/page.tsx` | Messages, Collaborations, Feed | Yes | Any |
 
 ### Navigation Flow
 
 ```
-Home (/) 
-├── Artists (/artists)
-│   └── Artist Detail (/artists/[id])
-├── Bookings (/bookings)
-│   └── Create Booking Modal
-└── Content (/content)
-    ├── Messages Tab
-    ├── Collaborations Tab
-    └── Feed Tab
+Root
+├── Login (/login)
+├── Signup (/signup)
+└── Authenticated Flow
+    ├── Home (/)
+    ├── Profile (/profile)
+    ├── Artist Bio (/artist-bio) [Artists only]
+    ├── Artists (/artists)
+    │   └── Artist Detail (/artists/[id])
+    ├── Bookings (/bookings)
+    │   └── Create Booking Modal
+    └── Content (/content)
+        ├── Messages Tab
+        ├── Collaborations Tab
+        └── Feed Tab
 ```
 
 ---
@@ -559,26 +723,303 @@ This is a frontend template. Security features to implement:
 
 ## Future Enhancements
 
-### Phase 2
-- [ ] User authentication & profiles
+### Phase 2 (Completed)
+- [x] User authentication & profiles
+- [x] Artist bio management
+- [x] Multi-platform publishing
+
+### Phase 3 (Backend & Payments)
+- [ ] Backend API integration (REST/GraphQL)
+- [ ] Database setup (PostgreSQL/MongoDB)
+- [ ] JWT authentication with real API
 - [ ] Payment integration (Stripe)
-- [ ] Real-time notifications
+- [ ] Real-time notifications (WebSockets)
+- [ ] Real-time messaging with backend
+
+### Phase 4 (Advanced Features)
 - [ ] Video/audio streaming
 - [ ] Advanced search algorithms
-
-### Phase 3
 - [ ] AI-powered artist recommendations
+- [ ] Analytics dashboard
+- [ ] Artist verification system
+
+### Phase 5 (Mobile & Expansion)
 - [ ] Mobile app (React Native)
 - [ ] Live streaming capabilities
 - [ ] Ticket system for events
-- [ ] Analytics dashboard
-
-### Phase 4
 - [ ] Virtual concert platform
 - [ ] NFT integration
 - [ ] Advanced collaboration tools
-- [ ] Learning management system
 - [ ] Podcast hosting
+
+---
+
+## Extending the Codebase with New Features
+
+### Best Practices for Feature Development
+
+#### 1. **Adding a New Page/Route**
+
+**Structure:**
+```
+app/
+├── new-feature/
+│   └── page.tsx
+```
+
+**Template:**
+```typescript
+'use client';
+
+import Navigation from '@/components/Navigation';
+import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+
+export default function NewFeaturePage() {
+  const { user, isAuthenticated } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push('/login');
+    }
+  }, [isAuthenticated, router]);
+
+  return (
+    <>
+      <Navigation />
+      <main className="pt-20 min-h-screen bg-black text-white">
+        {/* Your content */}
+      </main>
+    </>
+  );
+}
+```
+
+**Key Points:**
+- Add `'use client'` directive for client-side interactivity
+- Check authentication with `useAuth()` hook
+- Redirect unauthenticated users in `useEffect`
+- Always include `Navigation` component
+- Use consistent dark theme styling
+
+#### 2. **Adding a Reusable Component**
+
+**Structure:**
+```
+components/
+├── NewComponent.tsx
+```
+
+**Template:**
+```typescript
+interface NewComponentProps {
+  title: string;
+  onAction: () => void;
+}
+
+export default function NewComponent({ title, onAction }: NewComponentProps) {
+  return (
+    <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
+      <h2 className="text-xl font-bold text-white">{title}</h2>
+      <button
+        onClick={onAction}
+        className="mt-4 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"
+      >
+        Action
+      </button>
+    </div>
+  );
+}
+```
+
+**Best Practices:**
+- Always define prop interfaces with TypeScript
+- Use semantic HTML elements
+- Apply Tailwind CSS utility classes
+- Keep components focused and reusable
+- Add clear prop descriptions in comments if complex
+
+#### 3. **Extending AuthContext for New Features**
+
+**When to extend:**
+- Adding new user data fields
+- Adding new authentication methods
+- Adding new user permissions/roles
+
+**Example - Adding a new method:**
+```typescript
+// In AuthContext.tsx
+
+interface AuthContextType {
+  // ... existing
+  connectToAPI: (apiKey: string) => Promise<void>;
+}
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  // ... existing state
+
+  const connectToAPI = async (apiKey: string) => {
+    setIsLoading(true);
+    try {
+      if (user) {
+        const updatedUser = {
+          ...user,
+          apiConnections: { ...user.apiConnections, connected: true }
+        };
+        localStorage.setItem('bandly_user', JSON.stringify(updatedUser));
+        setUser(updatedUser);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <AuthContext.Provider value={{ ..., connectToAPI }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+```
+
+#### 4. **Adding New Type Definitions**
+
+**Update `types/index.ts`:**
+```typescript
+export interface NewFeature {
+  id: string;
+  name: string;
+  createdAt: Date;
+  userId: string;
+}
+```
+
+**Then use in components:**
+```typescript
+import { NewFeature } from '@/types';
+
+const feature: NewFeature = {
+  id: '1',
+  name: 'Example',
+  createdAt: new Date(),
+  userId: 'user-1'
+};
+```
+
+#### 5. **Backend Integration Pattern**
+
+**When transitioning to backend:**
+
+1. **Create API utility file:**
+```typescript
+// lib/api.ts
+export async function fetchArtists() {
+  const response = await fetch('/api/artists', {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  return response.json();
+}
+```
+
+2. **Update AuthContext:**
+```typescript
+const login = async (email: string, password: string) => {
+  const response = await fetch('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password })
+  });
+  const data = await response.json();
+  localStorage.setItem('token', data.token);
+  setUser(data.user);
+};
+```
+
+3. **Use in components:**
+```typescript
+import { fetchArtists } from '@/lib/api';
+
+const [artists, setArtists] = useState([]);
+
+useEffect(() => {
+  fetchArtists().then(setArtists);
+}, []);
+```
+
+### Feature Development Checklist
+
+- [ ] Create necessary file structure (pages/components/types)
+- [ ] Add TypeScript interfaces for all data
+- [ ] Implement authentication checks if needed
+- [ ] Add error handling and validation
+- [ ] Include success/error user feedback
+- [ ] Test on multiple screen sizes
+- [ ] Run linting: `npm run lint`
+- [ ] Ensure no TypeScript errors: `npm run typecheck`
+- [ ] Update ARCHITECTURE.md with new feature
+- [ ] Update routes table if adding routes
+
+### Common Patterns
+
+**Form Handling:**
+```typescript
+const [formData, setFormData] = useState({ field1: '', field2: '' });
+const [errors, setErrors] = useState<Record<string, string>>({});
+
+const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+};
+
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setErrors({});
+  
+  // Validation
+  if (!formData.field1) setErrors({ field1: 'Required' });
+  
+  // Submit
+  try {
+    await submitForm(formData);
+    setSuccessMessage('Success!');
+  } catch (error) {
+    setErrors({ submit: 'Failed to submit' });
+  }
+};
+```
+
+**Modal Implementation:**
+```typescript
+const [showModal, setShowModal] = useState(false);
+
+return (
+  <>
+    <button onClick={() => setShowModal(true)}>Open Modal</button>
+    
+    {showModal && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+        <div className="bg-gray-900 p-6 rounded-lg">
+          <h2>Modal Content</h2>
+          <button onClick={() => setShowModal(false)}>Close</button>
+        </div>
+      </div>
+    )}
+  </>
+);
+```
+
+**Status Indicator:**
+```typescript
+const statusColors = {
+  pending: 'bg-yellow-500',
+  confirmed: 'bg-green-500',
+  error: 'bg-red-500'
+};
+
+<div className={`px-3 py-1 rounded-full text-sm ${statusColors[status]}`}>
+  {status}
+</div>
+```
 
 ---
 
@@ -655,4 +1096,5 @@ For questions or issues, please refer to the project documentation or contact th
 ---
 
 **Last Updated**: December 2024
-**Version**: 1.0.0
+**Version**: 2.0.0
+**Phase**: Phase 2 Complete - Authentication & Artist Bio Publishing
