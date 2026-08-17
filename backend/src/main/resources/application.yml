@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: bandly-backend
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/bandly
+    username: bandly
+    password: bandly
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: 8080
+
+bandly:
+  jwt:
+    # Local-dev-only secret. Overridden via BANDLY_JWT_SECRET in every real environment.
+    secret: ${BANDLY_JWT_SECRET:dev-only-secret-key-change-me-please-this-is-not-for-production-use-1234567890}
+    access-token-ttl-minutes: 15
+    refresh-token-ttl-days: 30
+  cors:
+    allowed-origins: ${BANDLY_CORS_ORIGINS:http://localhost:3000}
+
+logging:
+  level:
+    com.bandly: DEBUG

@@ -1,0 +1,25 @@
+# --- root ---
+.DS_Store
+*.pdf.crdownload
+
+# --- backend (Gradle / Kotlin) ---
+backend/.gradle/
+backend/build/
+backend/out/
+backend/!gradle/wrapper/gradle-wrapper.jar
+backend/HELP.md
+!backend/gradle/wrapper/gradle-wrapper.jar
+*.iml
+.idea/
+
+# --- frontend (Next.js) ---
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env*.local
+frontend/next-env.d.ts
+
+# --- env / secrets ---
+.env
+.env.local
+*.pem
