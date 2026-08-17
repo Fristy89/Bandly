@@ -1,45 +1,58 @@
 @import "tailwindcss";
 
-/* Class-based dark mode: html.dark, synced to system preference via an
-   inline no-flash script in the root layout. Keeps the door open for a
-   future manual toggle without changing every utility class later. */
+/* Class-based dark mode: html.dark, synced to system preference (or a
+   manual override) via an inline no-flash script in the root layout.
+   Combined with the data-bg attribute below to give two independent
+   choices: appearance (light/dark/system) and background tone. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Brand colors are shared across every background tone — they don't move
+   when the customer picks a different canvas, only paper/surface/ink/
+   border do. Defined once here; the [data-bg] blocks below never touch
+   them. */
 :root {
-  /* Paper — warm neutral app ground. Not stark white, not cream. */
-  --paper: #f1ede3;
-  /* Surface — cards, sidebar, panels: a clean lift off the paper. */
-  --surface: #fbf9f4;
-  --surface-raised: #ffffff;
-  /* Ink — warm near-black text, never pure #000. */
-  --ink: #24201a;
-  --ink-muted: #736a59;
-  --ink-faint: #7a6f5d;
-  /* Hairlines */
-  --border: #e2dac6;
-  --border-strong: #cfc3a9;
-  /* Accent — the Limburg flag's blue band. Trustworthy, not corporate-SaaS
-     blue: matched against the actual provincial flag, not a generic brand
-     blue. Spent deliberately, same as the amber it replaces. */
   --accent: #1c4fa8;
   --accent-strong: #133b85;
   --accent-soft: #dde6f6;
   --on-accent: #fbf9f4;
-  /* Gold — the flag's lower band. A secondary signal, used sparingly in
-     structural/decorative spots (meter bars) — never a second competing
-     primary color. This is the former sole accent value, demoted, not
-     discarded. */
   --gold: #ac7423;
   --gold-strong: #8f5e18;
   --gold-soft: #f1e2c4;
-  /* Semantic — "attention" leans toward the flag lion's red, since overdue
-     already wanted a red-adjacent hue. Kept a notch quieter than the
-     heraldic red so it still reads as calm urgency, not an alarm. */
   --good: #5c7a52;
   --good-soft: #e3ead9;
   --attention: #b03f34;
   --attention-soft: #f2dcd6;
+}
 
+.dark {
+  --accent: #6a95dd;
+  --accent-strong: #8fb0e8;
+  --accent-soft: #1c2a42;
+  --on-accent: #0c1526;
+  --gold: #e6a94f;
+  --gold-strong: #f2bd6e;
+  --gold-soft: #3a2c16;
+  --good: #92ac83;
+  --good-soft: #26301f;
+  --attention: #e0796b;
+  --attention-soft: #3a201b;
+}
+
+/* Background tones — the customer's choice of canvas. "Warm" is the
+   default and lives on :root/.dark directly (no data-bg needed, so
+   markup/SSR without the attribute still renders correctly). Applied via
+   ThemePicker + the no-flash init script, persisted in localStorage. */
+
+/* Warm — soft, uncoated-paper feel. The original default. */
+:root {
+  --paper: #f1ede3;
+  --surface: #fbf9f4;
+  --surface-raised: #ffffff;
+  --ink: #24201a;
+  --ink-muted: #736a59;
+  --ink-faint: #7a6f5d;
+  --border: #e2dac6;
+  --border-strong: #cfc3a9;
   --grain-opacity: 0.035;
 }
 
@@ -52,19 +65,58 @@
   --ink-faint: #9a8e79;
   --border: #3a3227;
   --border-strong: #443a2c;
-  --accent: #6a95dd;
-  --accent-strong: #8fb0e8;
-  --accent-soft: #1c2a42;
-  --on-accent: #0c1526;
-  --gold: #e6a94f;
-  --gold-strong: #f2bd6e;
-  --gold-soft: #3a2c16;
-  --good: #92ac83;
-  --good-soft: #26301f;
-  --attention: #e0796b;
-  --attention-soft: #3a201b;
-
   --grain-opacity: 0.05;
+}
+
+/* Slate — a cool neutral canvas for anyone who doesn't want warmth. */
+[data-bg="slate"] {
+  --paper: #eef0f2;
+  --surface: #f8f9fa;
+  --surface-raised: #ffffff;
+  --ink: #1b2027;
+  --ink-muted: #52585f;
+  --ink-faint: #5a6169;
+  --border: #dde1e6;
+  --border-strong: #c7ccd3;
+  --grain-opacity: 0.03;
+}
+
+[data-bg="slate"].dark {
+  --paper: #14171b;
+  --surface: #1c2126;
+  --surface-raised: #242a30;
+  --ink: #e8ebee;
+  --ink-muted: #a7afb8;
+  --ink-faint: #99a1aa;
+  --border: #2c333b;
+  --border-strong: #363e47;
+  --grain-opacity: 0.045;
+}
+
+/* Contrast — crisp and maximal: true white/black canvas, no grain, for
+   whoever wants the least "atmosphere" and the most clarity. */
+[data-bg="contrast"] {
+  --paper: #ffffff;
+  --surface: #f7f7f7;
+  --surface-raised: #ffffff;
+  --ink: #101010;
+  --ink-muted: #454545;
+  --ink-faint: #4d4d4d;
+  --border: #e4e4e4;
+  --border-strong: #cfcfcf;
+  --grain-opacity: 0;
+}
+
+[data-bg="contrast"].dark {
+  --paper: #000000;
+  --surface: #0d0d0d;
+  --surface-raised: #161616;
+  --ink: #f5f5f5;
+  --ink-muted: #d0d0d0;
+  --ink-faint: #b8b8b8;
+  --border: #262626;
+  --border-strong: #333333;
+  --grain-opacity: 0;
 }
 
 @theme inline {

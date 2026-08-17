@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Fraunces, Geist, Geist_Mono, Kaushan_Script } from "next/font/google";
+import { themeInitScript } from "@/shared/lib/theme";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -35,11 +36,6 @@ export const metadata: Metadata = {
   description:
     "Bandly is the artist operating system — release planning, booking, rights, and grants in one calm place.",
 };
-
-// Keeps the app in sync with the system's light/dark preference before
-// hydration, so there's no flash of the wrong theme. There's no manual
-// toggle yet, but the class-based strategy is what makes one cheap to add.
-const themeInitScript = `(function(){try{var d=window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.classList.toggle('dark',d);}catch(e){}})();`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

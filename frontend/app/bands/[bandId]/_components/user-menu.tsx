@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Avatar } from "@/shared/ui/avatar";
-import { IconChevronUpDown, IconLogOut, IconSettings } from "@/shared/ui/icons";
+import { IconChevronUpDown, IconLogOut } from "@/shared/ui/icons";
+import { ThemePicker } from "@/shared/ui/theme-picker";
 
 export function UserMenu({ name, role }: { name: string; role: string }) {
   const [open, setOpen] = useState(false);
@@ -22,14 +23,8 @@ export function UserMenu({ name, role }: { name: string; role: string }) {
   return (
     <div ref={ref} className="relative">
       {open ? (
-        <div className="absolute bottom-[calc(100%+6px)] left-0 right-0 z-20 overflow-hidden rounded-lg border border-border bg-surface-raised shadow-lg">
-          <Link
-            href="#"
-            className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-ink-muted transition-colors hover:bg-surface hover:text-ink"
-          >
-            <IconSettings className="size-4" />
-            Settings
-          </Link>
+        <div className="absolute bottom-[calc(100%+6px)] left-0 right-0 z-20 w-72 overflow-hidden rounded-lg border border-border bg-surface-raised shadow-lg">
+          <ThemePicker />
           <Link
             href="/login"
             className="flex items-center gap-2.5 border-t border-border px-3 py-2.5 text-sm text-ink-muted transition-colors hover:bg-surface hover:text-ink"
