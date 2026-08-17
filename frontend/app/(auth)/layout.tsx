@@ -18,7 +18,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         </div>
 
         <div className="relative z-10">
-          <BrandMark />
+          <BrandMark animated />
         </div>
 
         <div className="relative z-10 max-w-sm">
@@ -34,7 +34,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
 
       <main className="relative flex flex-1 flex-col items-center justify-center px-6 py-14 sm:px-10">
         <div className="mb-8 flex flex-col items-center gap-2 text-center lg:hidden">
-          <BrandMark />
+          <BrandMark animated />
           <p className="text-sm text-ink-muted">The artist operating system.</p>
         </div>
         <div className="w-full max-w-[400px]">{children}</div>
