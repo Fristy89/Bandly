@@ -74,6 +74,8 @@
   --font-display: var(--font-fraunces);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* Wordmark only — do not use for headings or body copy. */
+  --font-signature: var(--font-kaushan);
 
   --text-display-2xl: 3.4rem;
   --text-display-2xl--line-height: 1.04;
@@ -105,22 +107,6 @@
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-/* The Bandly signature swash — drawn on with pathLength="1" so the dash
-   math works regardless of the actual path length. See BrandMark. */
-@keyframes signature-draw {
-  from {
-    stroke-dashoffset: 1;
-    opacity: 0;
-  }
-  15% {
-    opacity: 1;
-  }
-  to {
-    stroke-dashoffset: 0;
-    opacity: 1;
   }
 }
 
