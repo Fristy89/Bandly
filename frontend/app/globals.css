@@ -18,16 +18,27 @@
   /* Hairlines */
   --border: #e2dac6;
   --border-strong: #cfc3a9;
-  /* Accent — warm brass/amber signal. Spent deliberately. */
-  --accent: #ac7423;
-  --accent-strong: #8f5e18;
-  --accent-soft: #f1e2c4;
-  --on-accent: #fbf3e4;
-  /* Semantic — kept apart from the accent hue. */
+  /* Accent — the Limburg flag's blue band. Trustworthy, not corporate-SaaS
+     blue: matched against the actual provincial flag, not a generic brand
+     blue. Spent deliberately, same as the amber it replaces. */
+  --accent: #1c4fa8;
+  --accent-strong: #133b85;
+  --accent-soft: #dde6f6;
+  --on-accent: #fbf9f4;
+  /* Gold — the flag's lower band. A secondary signal, used sparingly in
+     structural/decorative spots (meter bars) — never a second competing
+     primary color. This is the former sole accent value, demoted, not
+     discarded. */
+  --gold: #ac7423;
+  --gold-strong: #8f5e18;
+  --gold-soft: #f1e2c4;
+  /* Semantic — "attention" leans toward the flag lion's red, since overdue
+     already wanted a red-adjacent hue. Kept a notch quieter than the
+     heraldic red so it still reads as calm urgency, not an alarm. */
   --good: #5c7a52;
   --good-soft: #e3ead9;
-  --attention: #a2532f;
-  --attention-soft: #f0ddce;
+  --attention: #b03f34;
+  --attention-soft: #f2dcd6;
 
   --grain-opacity: 0.035;
 }
@@ -41,14 +52,17 @@
   --ink-faint: #9a8e79;
   --border: #3a3227;
   --border-strong: #443a2c;
-  --accent: #e6a94f;
-  --accent-strong: #f2bd6e;
-  --accent-soft: #3a2c16;
-  --on-accent: #1c1206;
+  --accent: #6a95dd;
+  --accent-strong: #8fb0e8;
+  --accent-soft: #1c2a42;
+  --on-accent: #0c1526;
+  --gold: #e6a94f;
+  --gold-strong: #f2bd6e;
+  --gold-soft: #3a2c16;
   --good: #92ac83;
   --good-soft: #26301f;
-  --attention: #d98f65;
-  --attention-soft: #372218;
+  --attention: #e0796b;
+  --attention-soft: #3a201b;
 
   --grain-opacity: 0.05;
 }
@@ -66,6 +80,9 @@
   --color-accent-strong: var(--accent-strong);
   --color-accent-soft: var(--accent-soft);
   --color-on-accent: var(--on-accent);
+  --color-gold: var(--gold);
+  --color-gold-strong: var(--gold-strong);
+  --color-gold-soft: var(--gold-soft);
   --color-good: var(--good);
   --color-good-soft: var(--good-soft);
   --color-attention: var(--attention);
