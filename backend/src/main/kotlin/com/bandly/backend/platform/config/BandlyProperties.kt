@@ -13,3 +13,8 @@ data class JwtProperties(
 data class CorsProperties(
     val allowedOrigins: List<String> = listOf("http://localhost:3000"),
 )
+
+@ConfigurationProperties(prefix = "bandly.ai")
+data class AiProperties(
+    val enabled: Boolean = false,
+)

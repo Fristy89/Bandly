@@ -28,6 +28,13 @@ class Band(
     @Column(name = "plan_tier", nullable = false, length = 30)
     var planTier: String = "free",
 
+    // A soft pointer only — no @ManyToOne to ArtistDnaVersion. The identity
+    // module's code must never depend on the artistdna module's code (see
+    // the dependency graph in blueprint §06); the FK exists at the database
+    // level (see V2__artist_dna.sql) but Kotlin-side this is just a UUID.
+    @Column(name = "current_dna_version_id")
+    var currentDnaVersionId: UUID? = null,
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     var createdAt: Instant = Instant.now(),

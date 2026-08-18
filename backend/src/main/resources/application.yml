@@ -19,6 +19,20 @@ spring:
     enabled: true
     locations: classpath:db/migration
 
+  ai:
+    anthropic:
+      # A syntactically-valid placeholder, not a real key — this is what lets the
+      # AnthropicChatModel bean construct cleanly at startup even when nobody has
+      # set ANTHROPIC_API_KEY yet. bandly.ai.enabled (below) is the real on/off
+      # switch; we never rely on Spring AI's own autoconfiguration being absent
+      # (there are open Spring AI issues where that doesn't disable cleanly).
+      api-key: ${ANTHROPIC_API_KEY:sk-ant-not-configured}
+      chat:
+        options:
+          model: ${BANDLY_AI_MODEL:claude-sonnet-4-20250514}
+          max-tokens: 2048
+          temperature: 0.7
+
 server:
   port: 8080
 
@@ -30,6 +44,11 @@ bandly:
     refresh-token-ttl-days: 30
   cors:
     allowed-origins: ${BANDLY_CORS_ORIGINS:http://localhost:3000}
+  ai:
+    # Explicit feature flag, not "did someone set an API key" sniffing: predictable,
+    # and it's what makes the stub adapter path a deliberate choice instead of an
+    # accident. Flip to true (and set ANTHROPIC_API_KEY) to call the real model.
+    enabled: ${BANDLY_AI_ENABLED:false}
 
 logging:
   level:

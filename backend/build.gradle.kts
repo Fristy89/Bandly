@@ -20,7 +20,13 @@ repositories {
 	mavenCentral()
 }
 
+extra["springAiVersion"] = "2.0.0"
+
 dependencies {
+	implementation(platform("org.springframework.ai:spring-ai-bom:${property("springAiVersion")}"))
+	// Spring AI's Anthropic starter — the only provider we wire up (blueprint §11:
+	// one provider, chosen deliberately, not a multi-provider abstraction we don't need yet).
+	implementation("org.springframework.ai:spring-ai-starter-model-anthropic")
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-flyway")
 	implementation("org.springframework.boot:spring-boot-starter-security")
