@@ -164,12 +164,21 @@ export function listenOnce(
 
   recognition.onerror = (event) => {
     const error = (event as { error?: string }).error ?? "unknown";
+    // Chrome's SpeechRecognition streams audio to Google's servers to
+    // transcribe it — it isn't purely local — so "network" is a real,
+    // common failure on a VPN or a restrictive firewall, not an edge case.
     const message =
       error === "not-allowed" || error === "permission-denied"
-        ? "Microphone access was denied — check your browser's site permissions."
+        ? "Microphone access was denied — check your browser's site permissions and your system's microphone settings."
         : error === "no-speech"
           ? "Didn't catch that — try again."
-          : "Voice input hit a problem — try again.";
+          : error === "audio-capture"
+            ? "No microphone was found — check that one is connected and selected."
+            : error === "network"
+              ? "Voice input needs an internet connection to transcribe speech — check your connection or VPN."
+              : error === "service-not-allowed"
+                ? "This browser blocked voice input on this page — check its site settings."
+                : `Voice input hit a problem (${error}) — try again.`;
     handlers.onError(message);
   };
 
