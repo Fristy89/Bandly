@@ -27,6 +27,8 @@ dependencies {
 	// Spring AI's Anthropic starter — the only provider we wire up (blueprint §11:
 	// one provider, chosen deliberately, not a multi-provider abstraction we don't need yet).
 	implementation("org.springframework.ai:spring-ai-starter-model-anthropic")
+	// Swagger UI for local, in-browser API testing (blueprint §08: OpenAPI docs).
+	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0")
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-flyway")
 	implementation("org.springframework.boot:spring-boot-starter-security")

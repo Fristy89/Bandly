@@ -38,6 +38,12 @@ class SecurityConfig(
                     "/api/v1/auth/login",
                     "/api/v1/auth/refresh",
                     "/actuator/health",
+                    // Swagger UI itself is public for local dev testing; the API
+                    // calls made *through* it still require the Bearer token you
+                    // paste into its "Authorize" dialog.
+                    "/swagger-ui/**",
+                    "/swagger-ui.html",
+                    "/v3/api-docs/**",
                 ).permitAll()
                 it.anyRequest().authenticated()
             }

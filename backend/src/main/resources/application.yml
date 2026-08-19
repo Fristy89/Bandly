@@ -31,9 +31,10 @@ spring:
       api-key: ${ANTHROPIC_API_KEY:sk-ant-not-configured}
       chat:
         options:
-          model: ${BANDLY_AI_MODEL:claude-sonnet-4-20250514}
+          model: ${BANDLY_AI_MODEL:claude-sonnet-5}
           max-tokens: 2048
-          temperature: 0.7
+          # No temperature: this model rejects it as a deprecated param
+          # (400 invalid_request_error) rather than silently ignoring it.
 
 server:
   port: 8080
