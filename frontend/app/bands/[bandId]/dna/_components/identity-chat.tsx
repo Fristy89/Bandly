@@ -459,7 +459,24 @@ export function IdentityChat({ bandId }: { bandId: string }) {
                 <IconMicrophone className="size-4" />
                 <span className="sr-only">{listening ? "Stop listening" : "Speak your answer"}</span>
               </button>
-            ) : null}
+            ) : (
+              // Silently hiding this instead of explaining it left artists
+              // wondering why they simply had no way to talk to Bandly —
+              // this browser (commonly Safari, which doesn't ship
+              // SpeechRecognition) just can't do voice input at all, so say so.
+              <button
+                type="button"
+                disabled
+                aria-disabled="true"
+                title="Voice input isn't available in this browser — try Chrome or Edge instead."
+                className="flex size-10 shrink-0 cursor-not-allowed items-center justify-center rounded-lg border border-border text-ink-faint opacity-50"
+              >
+                <IconMicrophone className="size-4" />
+                <span className="sr-only">
+                  Voice input isn&apos;t available in this browser — try Chrome or Edge instead.
+                </span>
+              </button>
+            )}
             <textarea
               id="chat-input"
               ref={inputRef}
