@@ -46,6 +46,11 @@ export type LogoMark = {
   italic: boolean;
 };
 
+export type BrandPalette = {
+  primaryColor: string;
+  secondaryColor: string;
+};
+
 export type SiteContentData = {
   artist: ArtistInfo;
   tracks: Track[];
@@ -54,6 +59,7 @@ export type SiteContentData = {
   texts: SiteTexts;
   seo: SiteSeo;
   logoMark: LogoMark | null;
+  brandPalette: BrandPalette | null;
 };
 
 export type PublicSiteResponse = {

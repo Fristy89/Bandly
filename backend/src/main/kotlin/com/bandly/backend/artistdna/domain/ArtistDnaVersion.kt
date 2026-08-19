@@ -34,6 +34,15 @@ class ArtistDnaVersion(
     @Column(nullable = false, length = 20)
     var status: DnaStatus = DnaStatus.DRAFT,
 
+    /** Reasoned alongside the bios in the same generation call, not a
+     * separate decision — see ArtistDnaService.generateDna. Nullable only
+     * because versions generated before this field existed won't have it. */
+    @Column(name = "primary_color", length = 7)
+    var primaryColor: String? = null,
+
+    @Column(name = "secondary_color", length = 7)
+    var secondaryColor: String? = null,
+
     @Column(name = "created_at", nullable = false, updatable = false)
     var createdAt: Instant = Instant.now(),
 )

@@ -23,6 +23,17 @@ data class SiteContentData(
     /** AI-generated wordmark styling — see LogoService. Null until the band
      * generates one; the renderer falls back to plain text until then. */
     val logoMark: LogoMark? = null,
+    /** Copied from the band's current Artist DNA version the moment a logo
+     * is generated (see LogoService) — not decided independently here.
+     * Lets the renderer theme more than just the wordmark (accent color,
+     * buttons) from the same brand colors. Null until DNA has been
+     * generated at least once. */
+    val brandPalette: BrandPalette? = null,
+)
+
+data class BrandPalette(
+    val primaryColor: String,
+    val secondaryColor: String,
 )
 
 /**

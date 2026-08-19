@@ -24,8 +24,20 @@ export default async function SitePage({
 
   const { content } = resolved;
 
+  // The band's DNA-derived palette (see LogoService on the backend) themes
+  // more than just the wordmark: overriding --accent/--accent-strong here
+  // reaches every bg-accent/text-accent-strong element below (the "Listen
+  // now" button, link hovers, …) via normal CSS custom-property cascade —
+  // including the fixed navbar, which inheritance doesn't care about.
+  const paletteStyle = content.brandPalette
+    ? ({
+        "--accent": content.brandPalette.primaryColor,
+        "--accent-strong": content.brandPalette.secondaryColor,
+      } as React.CSSProperties)
+    : undefined;
+
   return (
-    <>
+    <div style={paletteStyle}>
       <Navbar artistName={content.artist.name} logoMark={content.logoMark} />
       <main>
         <Hero artist={content.artist} images={content.images} logoMark={content.logoMark} />
@@ -35,6 +47,6 @@ export default async function SitePage({
         <ContactSection artist={content.artist} />
       </main>
       <Footer artistName={content.artist.name} />
-    </>
+    </div>
   );
 }

@@ -14,4 +14,9 @@ data class ArtistDnaOutput(
     val elevatorPitch: String,
     val aboutTheArtist: String,
     val toneOfVoice: String,
+    /** A palette reasoned from the same identity context as the bios —
+     * not a separate, disconnected color guess. Consumed by LogoService
+     * and, through it, the band's public site — see ArtistDnaService. */
+    val primaryColor: String,
+    val secondaryColor: String,
 )

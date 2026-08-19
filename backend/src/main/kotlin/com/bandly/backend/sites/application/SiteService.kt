@@ -3,6 +3,7 @@ package com.bandly.backend.sites.application
 import com.bandly.backend.identity.infrastructure.BandRepository
 import com.bandly.backend.platform.error.NotFoundException
 import com.bandly.backend.sites.domain.ArtistInfo
+import com.bandly.backend.sites.domain.BrandPalette
 import com.bandly.backend.sites.domain.LogoMark
 import com.bandly.backend.sites.domain.Site
 import com.bandly.backend.sites.domain.SiteContent
@@ -64,6 +65,14 @@ class SiteService(
         val site = getOrCreateSite(bandId)
         val row = siteContents.findBySiteId(site.id) ?: SiteContent(siteId = site.id)
         row.content = row.content.copy(logoMark = logoMark)
+        return siteContents.save(row).content
+    }
+
+    @Transactional
+    fun updateBrandPalette(bandId: UUID, primaryColor: String, secondaryColor: String): SiteContentData {
+        val site = getOrCreateSite(bandId)
+        val row = siteContents.findBySiteId(site.id) ?: SiteContent(siteId = site.id)
+        row.content = row.content.copy(brandPalette = BrandPalette(primaryColor, secondaryColor))
         return siteContents.save(row).content
     }
 

@@ -1,5 +1,6 @@
 package com.bandly.backend.sites.application
 
+import com.bandly.backend.artistdna.application.ArtistDnaColors
 import com.bandly.backend.artistdna.application.ArtistDnaService
 import com.bandly.backend.platform.ai.GenerationJobService
 import com.bandly.backend.platform.ai.GenerationRequest
@@ -29,17 +30,31 @@ class LogoService(
 ) {
 
     fun generateLogo(bandId: UUID): SiteContentData {
-        val mark = generationJobs.runStructured(
+        val dnaColors = artistDnaService.currentColors(bandId)
+
+        val aiChoice = generationJobs.runStructured(
             bandId = bandId,
             module = "site-logo",
-            request = buildPrompt(bandId),
+            request = buildPrompt(bandId, dnaColors),
             responseType = LogoMark::class.java,
             fallback = { DEFAULT_LOGO },
         )
-        return siteService.updateLogoMark(bandId, sanitize(mark))
+        // DNA's palette wins over the model's independent color guess when
+        // one exists — the whole point of this feature is that the logo's
+        // color isn't decided twice, disconnected from the rest of the
+        // brand. Font/italic stay the model's own call either way; a color
+        // palette and a typeface aren't the same kind of decision.
+        val mark = sanitize(aiChoice).let { m ->
+            dnaColors?.let { m.copy(colorHex = it.primaryColor) } ?: m
+        }
+
+        siteService.updateLogoMark(bandId, mark)
+        return dnaColors
+            ?.let { siteService.updateBrandPalette(bandId, it.primaryColor, it.secondaryColor) }
+            ?: siteService.getContent(bandId)
     }
 
-    private fun buildPrompt(bandId: UUID): GenerationRequest {
+    private fun buildPrompt(bandId: UUID, dnaColors: ArtistDnaColors?): GenerationRequest {
         val identity = try {
             artistDnaService.currentDna(bandId).joinToString("\n") { "${it.assetType}: ${it.content}" }
         } catch (ex: NotFoundException) {
@@ -57,8 +72,17 @@ class LogoService(
 
                 Match the artist's actual genre and mood, not just what looks
                 nice in general — a metal band and a lounge singer should not
-                land on the same font. The color should suit the font and the
-                artist, as a hex code.
+                land on the same font.
+                ${
+            if (dnaColors != null) {
+                "This artist already has a brand color, ${dnaColors.primaryColor} — it will be " +
+                    "used regardless of what you choose here, so just pick the font/italic that " +
+                    "suits it. Still return a color field; it will be ignored."
+            } else {
+                "No brand color exists yet, so also choose one hex color that suits the font and " +
+                    "the artist."
+            }
+        }
             """.trimIndent(),
             userPrompt = buildString {
                 appendLine("Artist name: ${artist.name}")

@@ -4,6 +4,7 @@ import com.bandly.backend.artistdna.domain.ArtistDnaVersion
 import com.bandly.backend.artistdna.domain.AssetType
 import com.bandly.backend.artistdna.domain.GeneratedAsset
 import com.bandly.backend.artistdna.domain.IdentityProfile
+import com.bandly.backend.artistdna.domain.IdentityQuestions
 import com.bandly.backend.artistdna.infrastructure.ArtistDnaVersionRepository
 import com.bandly.backend.artistdna.infrastructure.GeneratedAssetRepository
 import com.bandly.backend.artistdna.infrastructure.IdentityProfileRepository
@@ -16,6 +17,8 @@ import com.bandly.backend.platform.error.NotFoundException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
+
+data class ArtistDnaColors(val primaryColor: String, val secondaryColor: String)
 
 /**
  * The first real consumer of AiGenerationPort, and the module every other
@@ -75,7 +78,14 @@ class ArtistDnaService(
             fallback = { stubOutput(profile) },
         )
 
-        val version = dnaVersions.save(ArtistDnaVersion(bandId = bandId, identityProfileId = profile.id))
+        val version = dnaVersions.save(
+            ArtistDnaVersion(
+                bandId = bandId,
+                identityProfileId = profile.id,
+                primaryColor = sanitizeColor(output.primaryColor, DEFAULT_PRIMARY_COLOR),
+                secondaryColor = sanitizeColor(output.secondaryColor, DEFAULT_SECONDARY_COLOR),
+            ),
+        )
         persistAssets(bandId, version.id, output)
 
         val band = bands.findById(bandId).orElseThrow { NotFoundException("Band $bandId not found") }
@@ -90,6 +100,23 @@ class ArtistDnaService(
         val versionId = band.currentDnaVersionId
             ?: throw NotFoundException("No Artist DNA generated yet for this band")
         return generatedAssets.findAllByDnaVersionId(versionId)
+    }
+
+    /**
+     * The one thing the Sites module (LogoService) reaches into this module
+     * for — sites depends on artistdna, same direction as every other
+     * domain module (blueprint §06), never the other way. Returns null
+     * rather than throwing when there's no DNA yet: a band can generate a
+     * logo before ever generating DNA, and that's a normal path, not an
+     * error — see LogoService's fallback.
+     */
+    fun currentColors(bandId: UUID): ArtistDnaColors? {
+        val band = bands.findById(bandId).orElseThrow { NotFoundException("Band $bandId not found") }
+        val versionId = band.currentDnaVersionId ?: return null
+        val version = dnaVersions.findById(versionId).orElse(null) ?: return null
+        val primary = version.primaryColor ?: return null
+        val secondary = version.secondaryColor ?: return null
+        return ArtistDnaColors(primary, secondary)
     }
 
     /** Streams a fresh elevator pitch line — the SSE path from blueprint §12,
@@ -138,15 +165,38 @@ class ArtistDnaService(
             Here is the artist's Identity Profile:
             ${formatAnswers(profile.answers)}
 
-            Produce all five fields: a short bio (2-3 sentences), a long bio (2-3
+            Produce all seven fields: a short bio (2-3 sentences), a long bio (2-3
             paragraphs), a one-line elevator pitch, an "about the artist" press-kit
-            paragraph, and a tone-of-voice note (words/themes that fit this artist,
-            and clichés or phrasing to avoid).
+            paragraph, a tone-of-voice note (words/themes that fit this artist, and
+            clichés or phrasing to avoid), and a two-color palette (primaryColor,
+            secondaryColor, both hex) reasoned from the same identity above —
+            especially their sound, personality, and the feeling they want people
+            to have. A metal band and a lounge singer should not land on the same
+            palette; avoid defaulting to generic "AI-chosen" colors (the usual
+            purple-blue gradients or safe pastel blues) when the identity actually
+            points somewhere more specific.
         """.trimIndent(),
     )
 
-    private fun formatAnswers(answers: Map<String, String>) =
-        answers.entries.joinToString("\n") { (question, answer) -> "- $question: $answer" }
+    /** Resolves raw answer keys back to their full question text (see
+     * IdentityQuestions) so the model reads "Why does your music need to
+     * exist?: ..." instead of a bare key like "purpose: ..." — richer
+     * context for the same reasoning the intake questions were designed to
+     * prompt in the artist. Unrecognized keys pass through as-is, since
+     * IdentityProfile.answers isn't restricted to this exact key set. */
+    private fun formatAnswers(answers: Map<String, String>): String {
+        val questionsByKey = IdentityQuestions.ALL.associateBy { it.key }
+        return answers.entries.joinToString("\n") { (key, answer) ->
+            val question = questionsByKey[key]?.prompt ?: key
+            "- $question: $answer"
+        }
+    }
+
+    /** Guards against a malformed or missing hex value reaching the
+     * database/renderer — the same defensive pattern LogoService uses for
+     * its own color field. */
+    private fun sanitizeColor(color: String, fallback: String): String =
+        if (Regex("^#[0-9a-fA-F]{6}$").matches(color)) color else fallback
 
     /** Used when bandly.ai.enabled=false, or if a real call fails — always
      * clearly labeled so nobody mistakes it for the model's actual voice. */
@@ -156,15 +206,23 @@ class ArtistDnaService(
         elevatorPitch = "[stub elevator pitch]",
         aboutTheArtist = "[stub about-the-artist paragraph]",
         toneOfVoice = "[stub tone-of-voice notes]",
+        primaryColor = DEFAULT_PRIMARY_COLOR,
+        secondaryColor = DEFAULT_SECONDARY_COLOR,
     )
 
     companion object {
         private val DNA_SYSTEM_PROMPT = """
             You are compiling an independent musician's brand identity for Bandly, an
-            artist operating system. Write in a natural, specific voice grounded only
-            in what the artist actually told you — never invent facts, genres, or
+            artist operating system. Reason across the same dimensions the artist was
+            asked about: their purpose, the gap they fill, their sound, what makes
+            them different, their personality, their audience, and the feeling they
+            want to create. Write in a natural, specific voice grounded only in what
+            the artist actually told you — never invent facts, genres, or
             achievements they didn't mention. Avoid music-press clichés such as
             "rising star" or "genre-defying".
         """.trimIndent()
+
+        private const val DEFAULT_PRIMARY_COLOR = "#1c4fa8"
+        private const val DEFAULT_SECONDARY_COLOR = "#ac7423"
     }
 }
