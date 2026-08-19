@@ -26,9 +26,9 @@ export default async function SitePage({
 
   return (
     <>
-      <Navbar artistName={content.artist.name} />
+      <Navbar artistName={content.artist.name} logoMark={content.logoMark} />
       <main>
-        <Hero artist={content.artist} images={content.images} />
+        <Hero artist={content.artist} images={content.images} logoMark={content.logoMark} />
         <MusicSection tracks={content.tracks} />
         <ShowsSection shows={content.shows} />
         <Bio texts={content.texts} images={content.images} />

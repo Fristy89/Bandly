@@ -40,6 +40,12 @@ export type SiteSeo = {
   keywords: string;
 };
 
+export type LogoMark = {
+  fontFamily: string;
+  colorHex: string;
+  italic: boolean;
+};
+
 export type SiteContentData = {
   artist: ArtistInfo;
   tracks: Track[];
@@ -47,6 +53,7 @@ export type SiteContentData = {
   images: SiteImages;
   texts: SiteTexts;
   seo: SiteSeo;
+  logoMark: LogoMark | null;
 };
 
 export type PublicSiteResponse = {

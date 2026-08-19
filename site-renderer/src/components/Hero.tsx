@@ -1,7 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import type { ArtistInfo, SiteImages } from "@/lib/types";
+import { SignatureMark } from "./SignatureMark";
+import type { ArtistInfo, LogoMark, SiteImages } from "@/lib/types";
 
 /**
  * The reference site's Hero doubles as the live-stage player entry point
@@ -9,7 +10,15 @@ import type { ArtistInfo, SiteImages } from "@/lib/types";
  * per the brief this module came out of ("without the live feature"). This
  * is the hero on its own: name, tagline, a way into the music.
  */
-export function Hero({ artist, images }: { artist: ArtistInfo; images: SiteImages }) {
+export function Hero({
+  artist,
+  images,
+  logoMark,
+}: {
+  artist: ArtistInfo;
+  images: SiteImages;
+  logoMark: LogoMark | null;
+}) {
   return (
     <section
       id="home"
@@ -29,9 +38,12 @@ export function Hero({ artist, images }: { artist: ArtistInfo; images: SiteImage
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: "easeOut" }}
-          className="font-display text-5xl italic text-ink sm:text-7xl"
         >
-          {artist.name || "Your artist name"}
+          <SignatureMark
+            name={artist.name || "Your artist name"}
+            logoMark={logoMark}
+            className="text-5xl sm:text-7xl"
+          />
         </motion.h1>
         {artist.tagline ? (
           <motion.p

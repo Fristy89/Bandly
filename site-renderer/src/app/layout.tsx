@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Fraunces, Geist } from "next/font/google";
+import { signatureFontVariables } from "@/lib/fonts";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${fraunces.variable} ${geistSans.variable}`}>
+    <html lang="en" className={`${fraunces.variable} ${geistSans.variable} ${signatureFontVariables}`}>
       <body className="bg-paper font-sans text-ink antialiased">{children}</body>
     </html>
   );

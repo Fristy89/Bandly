@@ -3,6 +3,7 @@ package com.bandly.backend.sites.api
 import com.bandly.backend.identity.application.BandService
 import com.bandly.backend.platform.error.UnauthorizedException
 import com.bandly.backend.platform.security.currentUserId
+import com.bandly.backend.sites.application.LogoService
 import com.bandly.backend.sites.application.SiteService
 import com.bandly.backend.sites.domain.SiteContentData
 import org.springframework.web.bind.annotation.GetMapping
@@ -19,6 +20,7 @@ import java.util.UUID
 @RequestMapping("/api/v1/bands/{bandId}/site")
 class SiteController(
     private val siteService: SiteService,
+    private val logoService: LogoService,
     private val bandService: BandService,
 ) {
 
@@ -39,6 +41,14 @@ class SiteController(
     fun updateContent(@PathVariable bandId: UUID, @RequestBody content: SiteContentData): SiteContentData {
         bandService.requireMembership(bandId, requireAuthenticatedUser())
         return siteService.updateContent(bandId, content)
+    }
+
+    /** Generates AND applies a new signature wordmark in one call — see
+     * LogoService for why that's one step, not generate-then-save. */
+    @PostMapping("/logo/generate")
+    fun generateLogo(@PathVariable bandId: UUID): SiteContentData {
+        bandService.requireMembership(bandId, requireAuthenticatedUser())
+        return logoService.generateLogo(bandId)
     }
 
     @PostMapping("/publish")

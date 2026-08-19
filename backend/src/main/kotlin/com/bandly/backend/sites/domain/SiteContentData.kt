@@ -20,7 +20,46 @@ data class SiteContentData(
     val images: SiteImages = SiteImages(),
     val texts: SiteTexts = SiteTexts(),
     val seo: SiteSeo = SiteSeo(),
+    /** AI-generated wordmark styling — see LogoService. Null until the band
+     * generates one; the renderer falls back to plain text until then. */
+    val logoMark: LogoMark? = null,
 )
+
+/**
+ * A "signature" logo isn't a raster image here — it's a font + color + a
+ * style flag, rendered as real, crisp, scalable text on the site (the same
+ * technique Bandly's own wordmark uses — see frontend/shared/ui/brand-mark.tsx
+ * and the Kaushan Script choice made for it). No image-generation model is
+ * involved; Anthropic doesn't offer one, and this sidesteps needing a second
+ * provider/API key for what's fundamentally a styling decision an LLM can
+ * reason about well from an artist's genre and identity.
+ */
+data class LogoMark(
+    val fontFamily: String,
+    val colorHex: String,
+    val italic: Boolean = true,
+)
+
+/** The only fonts LogoService will ever pick from — curated so the AI's
+ * choice is always something the renderer actually has pre-loaded (see
+ * site-renderer/src/app/layout.tsx), spanning enough moods that a metal
+ * band and a lounge singer don't land on the same font by default. */
+object SignatureFonts {
+    val CURATED = listOf(
+        "Kaushan Script",
+        "Caveat",
+        "Permanent Marker",
+        "Pacifico",
+        "Yellowtail",
+        "Dancing Script",
+        "Sacramento",
+        "Playfair Display",
+        "Cinzel",
+        "Bebas Neue",
+        "Anton",
+        "Fraunces",
+    )
+}
 
 data class ArtistInfo(
     val name: String = "",
