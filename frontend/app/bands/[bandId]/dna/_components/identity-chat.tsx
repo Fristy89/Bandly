@@ -14,6 +14,7 @@ import { useAuth } from "@/shared/auth/auth-context";
 import { resizeImageFile, type ResizedImage } from "@/shared/lib/image";
 import {
   listenOnce,
+  listVoicesFor,
   speak,
   speechRecognitionSupported,
   speechSynthesisSupported,
@@ -61,6 +62,8 @@ export function IdentityChat({ bandId }: { bandId: string }) {
   const [siteContent, setSiteContent] = useState<SiteContentData | null>(null);
   const [bandName, setBandName] = useState("");
   const [speakReplies, setSpeakReplies] = useState(true);
+  const [voiceOptions, setVoiceOptions] = useState<SpeechSynthesisVoice[]>([]);
+  const [selectedVoiceURI, setSelectedVoiceURI] = useState<string | undefined>(undefined);
   const [listening, setListening] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState("");
   const [pendingImage, setPendingImage] = useState<ResizedImage | null>(null);
@@ -79,6 +82,25 @@ export function IdentityChat({ bandId }: { bandId: string }) {
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
+
+  // "Robotic" is entirely a matter of which voice the browser/OS installs
+  // for this language — listVoicesFor puts the far more natural network
+  // (cloud) voices first, but the artist can still override the pick if
+  // the default one on their machine still doesn't sound right.
+  useEffect(() => {
+    if (!speechSynthesisSupported()) return;
+    let cancelled = false;
+    listVoicesFor(language).then((voices) => {
+      if (cancelled) return;
+      setVoiceOptions(voices);
+      setSelectedVoiceURI((current) =>
+        current && voices.some((v) => v.voiceURI === current) ? current : undefined,
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [language]);
 
   // Only needed for the reveal screen's signature wordmark — the chat
   // itself never shows the artist's name back to them.
@@ -127,7 +149,7 @@ export function IdentityChat({ bandId }: { bandId: string }) {
         body: JSON.stringify({ history: nextMessages, language }),
       });
       setMessages((current) => [...current, { role: "assistant", content: response.reply }]);
-      if (speakReplies && ttsSupported) speak(response.reply, language);
+      if (speakReplies && ttsSupported) void speak(response.reply, language, selectedVoiceURI);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Bandly didn't respond — try sending that again.");
     } finally {
@@ -287,6 +309,27 @@ export function IdentityChat({ bandId }: { bandId: string }) {
               <span className="sr-only">{speakReplies ? "Turn off Bandly's voice" : "Turn on Bandly's voice"}</span>
             </button>
           ) : null}
+          {ttsSupported && speakReplies && voiceOptions.length > 1 ? (
+            <label className="sr-only" htmlFor="chat-voice-select">
+              Bandly&apos;s voice
+            </label>
+          ) : null}
+          {ttsSupported && speakReplies && voiceOptions.length > 1 ? (
+            <select
+              id="chat-voice-select"
+              value={selectedVoiceURI ?? ""}
+              onChange={(event) => setSelectedVoiceURI(event.target.value || undefined)}
+              title="Sounds too robotic? Pick a different voice."
+              className="max-w-32 rounded-md border border-border bg-surface px-1.5 py-1 text-xs text-ink-muted"
+            >
+              <option value="">Best available</option>
+              {voiceOptions.map((voice) => (
+                <option key={voice.voiceURI} value={voice.voiceURI}>
+                  {voice.name}
+                </option>
+              ))}
+            </select>
+          ) : null}
         </div>
       </header>
 
@@ -334,7 +377,7 @@ export function IdentityChat({ bandId }: { bandId: string }) {
                 {message.role === "assistant" && ttsSupported ? (
                   <button
                     type="button"
-                    onClick={() => speak(message.content, language)}
+                    onClick={() => void speak(message.content, language, selectedVoiceURI)}
                     className="ml-2 inline-flex size-5 items-center justify-center rounded text-ink-faint opacity-0 transition-opacity hover:text-ink focus-visible:opacity-100 group-hover:opacity-100"
                   >
                     <IconSpeaker className="size-3.5" />

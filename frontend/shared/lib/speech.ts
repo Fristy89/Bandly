@@ -22,31 +22,70 @@ export function bcp47For(code: LanguageCode): string {
 // not a guarantee. Falls back to the first voice for the language if none
 // of these are installed, which is a real possibility on some systems.
 const FEMALE_VOICE_HINTS: Record<LanguageCode, string[]> = {
-  nl: ["Xander", "Claire", "Ellen", "Google Nederlands"],
+  nl: ["Claire", "Ellen", "Google Nederlands"],
   de: ["Anna", "Petra", "Google Deutsch"],
   en: ["Samantha", "Victoria", "Karen", "Moira", "Tessa", "Google US English"],
 };
 
-export function pickVoice(language: LanguageCode): SpeechSynthesisVoice | null {
-  if (typeof window === "undefined" || !window.speechSynthesis) return null;
-  const voices = window.speechSynthesis.getVoices();
-  const langPrefix = language;
-  const candidates = voices.filter((v) => v.lang.toLowerCase().startsWith(langPrefix));
+/**
+ * getVoices() is often empty on the very first call — the browser loads
+ * its voice list asynchronously and fires 'voiceschanged' once it's ready.
+ * Every caller here needs the real list, not a possibly-empty snapshot, so
+ * this is the one place that waits for it.
+ */
+function getVoicesReady(): Promise<SpeechSynthesisVoice[]> {
+  if (typeof window === "undefined" || !window.speechSynthesis) return Promise.resolve([]);
+  const existing = window.speechSynthesis.getVoices();
+  if (existing.length > 0) return Promise.resolve(existing);
+  return new Promise((resolve) => {
+    const synth = window.speechSynthesis;
+    const onChange = () => {
+      synth.removeEventListener("voiceschanged", onChange);
+      resolve(synth.getVoices());
+    };
+    synth.addEventListener("voiceschanged", onChange);
+    // Some browsers never fire the event if there's genuinely nothing to
+    // load — don't hang the caller forever waiting for it.
+    setTimeout(() => {
+      synth.removeEventListener("voiceschanged", onChange);
+      resolve(synth.getVoices());
+    }, 1000);
+  });
+}
+
+/** All installed voices for a language, network (cloud) voices first —
+ * those are a different, noticeably less robotic TTS engine than the
+ * on-device fallback most systems ship, so they're worth surfacing first
+ * in a picker and preferring automatically in pickVoice below. */
+export async function listVoicesFor(language: LanguageCode): Promise<SpeechSynthesisVoice[]> {
+  const voices = await getVoicesReady();
+  const candidates = voices.filter((v) => v.lang.toLowerCase().startsWith(language));
+  return [...candidates].sort((a, b) => Number(a.localService) - Number(b.localService));
+}
+
+export async function pickVoice(language: LanguageCode): Promise<SpeechSynthesisVoice | null> {
+  const candidates = await listVoicesFor(language);
   if (candidates.length === 0) return null;
 
   const hints = FEMALE_VOICE_HINTS[language];
-  const preferred = candidates.find((v) => hints.some((hint) => v.name.includes(hint)));
-  return preferred ?? candidates[0];
+  const named = candidates.filter((v) => hints.some((hint) => v.name.includes(hint)));
+  const pool = named.length > 0 ? named : candidates;
+
+  // Network voices are already sorted first by listVoicesFor.
+  return pool[0];
 }
 
-export function speak(text: string, language: LanguageCode) {
+export async function speak(text: string, language: LanguageCode, voiceURI?: string) {
   if (typeof window === "undefined" || !window.speechSynthesis) return;
   window.speechSynthesis.cancel(); // one voice at a time — a new reply shouldn't queue behind an old one
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = bcp47For(language);
-  utterance.rate = 1;
+  utterance.rate = 0.96; // the default 1.0 reads noticeably flatter/faster on most synthetic voices
   utterance.pitch = 1;
-  const voice = pickVoice(language);
+
+  const voice = voiceURI
+    ? (await listVoicesFor(language)).find((v) => v.voiceURI === voiceURI)
+    : await pickVoice(language);
   if (voice) utterance.voice = voice;
   window.speechSynthesis.speak(utterance);
 }
