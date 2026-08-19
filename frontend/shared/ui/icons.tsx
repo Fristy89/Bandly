@@ -203,6 +203,16 @@ export function IconSpeaker(props: IconProps) {
   );
 }
 
+/** Camera — a body and a lens, the simplest possible reading of it. */
+export function IconCamera(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4.5 8.5A1.5 1.5 0 0 1 6 7h2l1-2h6l1 2h2a1.5 1.5 0 0 1 1.5 1.5V18A1.5 1.5 0 0 1 18 19.5H6A1.5 1.5 0 0 1 4.5 18Z" strokeLinejoin="round" />
+      <circle cx="12" cy="13" r="3.25" />
+    </svg>
+  );
+}
+
 export function IconSpeakerMuted(props: IconProps) {
   return (
     <svg {...base} {...props}>

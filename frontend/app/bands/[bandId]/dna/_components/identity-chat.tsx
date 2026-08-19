@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type KeyboardEvent } from "react";
 import { apiFetch, ApiError } from "@/shared/api/client";
 import type { ArtistDnaVersionResponse, ChatReplyResponse, ChatTurn, GeneratedAssetResponse } from "@/shared/api/types";
 import { useAuth } from "@/shared/auth/auth-context";
+import { resizeImageFile, type ResizedImage } from "@/shared/lib/image";
 import {
   listenOnce,
   speak,
@@ -16,7 +17,7 @@ import {
 import { Avatar } from "@/shared/ui/avatar";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
-import { IconMicrophone, IconSpeaker, IconSpeakerMuted } from "@/shared/ui/icons";
+import { IconCamera, IconMicrophone, IconSpeaker, IconSpeakerMuted } from "@/shared/ui/icons";
 import { DnaResults } from "./dna-results";
 
 const OPENING_MESSAGES: Record<LanguageCode, string> = {
@@ -53,9 +54,12 @@ export function IdentityChat({ bandId }: { bandId: string }) {
   const [speakReplies, setSpeakReplies] = useState(true);
   const [listening, setListening] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState("");
+  const [pendingImage, setPendingImage] = useState<ResizedImage | null>(null);
+  const [imageStatus, setImageStatus] = useState("");
 
   const logRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const stopListeningRef = useRef<(() => void) | null>(null);
   const ttsSupported = speechSynthesisSupported();
   const sttSupported = speechRecognitionSupported();
@@ -78,12 +82,21 @@ export function IdentityChat({ bandId }: { bandId: string }) {
 
   async function sendMessage(overrideText?: string) {
     const text = (overrideText ?? input).trim();
-    if (!text || sending || !accessToken) return;
+    if ((!text && !pendingImage) || sending || !accessToken) return;
 
-    const nextMessages: ChatTurn[] = [...messages, { role: "user", content: text }];
+    const nextMessages: ChatTurn[] = [
+      ...messages,
+      {
+        role: "user",
+        content: text,
+        imageBase64: pendingImage?.base64,
+        imageMimeType: pendingImage?.mimeType,
+      },
+    ];
     setMessages(nextMessages);
     setInput("");
     setInterimTranscript("");
+    setPendingImage(null);
     setError(null);
     setSending(true);
     try {
@@ -143,6 +156,24 @@ export function IdentityChat({ bandId }: { bandId: string }) {
   function stopListening() {
     stopListeningRef.current?.();
     setListening(false);
+  }
+
+  async function handlePhotoSelected(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = ""; // lets the same file be picked again later
+    if (!file) return;
+    try {
+      const resized = await resizeImageFile(file);
+      setPendingImage(resized);
+      setImageStatus("Photo attached — it'll go with your next message.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't use that photo — try another one.");
+    }
+  }
+
+  function removePendingImage() {
+    setPendingImage(null);
+    setImageStatus("Photo removed.");
   }
 
   async function finishAndBuildDna() {
@@ -250,6 +281,14 @@ export function IdentityChat({ bandId }: { bandId: string }) {
                 }`}
               >
                 <span className="sr-only">{message.role === "user" ? "You said: " : "Bandly says: "}</span>
+                {message.imageBase64 ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={`data:${message.imageMimeType};base64,${message.imageBase64}`}
+                    alt="Photo you shared with Bandly"
+                    className="mb-2 max-h-48 w-full rounded-lg object-cover"
+                  />
+                ) : null}
                 {message.content}
                 {message.role === "assistant" && ttsSupported ? (
                   <button
@@ -285,7 +324,42 @@ export function IdentityChat({ bandId }: { bandId: string }) {
           <label htmlFor="chat-input" className="sr-only">
             Your message to Bandly
           </label>
+          <p aria-live="polite" className="sr-only">
+            {imageStatus}
+          </p>
+          {pendingImage ? (
+            <div className="mb-3 flex items-center gap-2.5 rounded-lg border border-border bg-paper p-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={pendingImage.dataUrl} alt="" className="size-10 rounded object-cover" />
+              <span className="flex-1 text-xs text-ink-muted">Photo attached — sent with your next message.</span>
+              <button
+                type="button"
+                onClick={removePendingImage}
+                className="rounded px-2 py-1 text-xs font-medium text-ink-muted hover:text-attention"
+              >
+                Remove
+              </button>
+            </div>
+          ) : null}
           <div className="flex items-end gap-2.5">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="user"
+              onChange={handlePhotoSelected}
+              className="sr-only"
+              id="chat-photo-input"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              title="Add a photo of yourself"
+              className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-border text-ink-muted transition-colors hover:border-border-strong hover:text-ink"
+            >
+              <IconCamera className="size-4" />
+              <span className="sr-only">Add a photo of yourself, for Bandly to see</span>
+            </button>
             {sttSupported ? (
               <button
                 type="button"
@@ -313,7 +387,7 @@ export function IdentityChat({ bandId }: { bandId: string }) {
               placeholder={listening ? "Listening…" : "Type your answer…"}
               className="max-h-32 flex-1 resize-none rounded-lg border border-border bg-paper px-3 py-2.5 text-sm text-ink placeholder:text-ink-faint focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
             />
-            <Button type="submit" size="md" loading={sending} disabled={!input.trim() || listening}>
+            <Button type="submit" size="md" loading={sending} disabled={(!input.trim() && !pendingImage) || listening}>
               Send
             </Button>
           </div>

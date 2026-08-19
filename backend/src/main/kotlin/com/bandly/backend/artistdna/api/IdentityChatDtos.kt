@@ -5,7 +5,10 @@ import jakarta.validation.constraints.NotEmpty
 
 data class ChatTurnRequest(
     @field:NotBlank val role: String, // "user" or "assistant"
-    @field:NotBlank val content: String,
+    // Not @NotBlank — a turn can be an image with no caption at all.
+    val content: String,
+    val imageBase64: String? = null,
+    val imageMimeType: String? = null,
 )
 
 data class ChatRequest(

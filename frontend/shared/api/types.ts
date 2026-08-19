@@ -56,6 +56,8 @@ export type GeneratedAssetResponse = {
 export type ChatTurn = {
   role: "user" | "assistant";
   content: string;
+  imageBase64?: string;
+  imageMimeType?: string;
 };
 
 export type ChatReplyResponse = {

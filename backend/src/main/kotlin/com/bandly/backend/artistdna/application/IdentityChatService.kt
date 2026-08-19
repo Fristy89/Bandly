@@ -38,8 +38,18 @@ class IdentityChatService(
      * them through. */
     fun summarize(bandId: UUID, history: List<ChatTurn>, language: String): IdentityProfile {
         val resolvedLanguage = if (SupportedLanguages.isSupported(language)) language.lowercase() else "en"
+        // The image itself isn't resent here — its influence already flows
+        // through in Bandly's own reactions to it during the conversation
+        // (reply() saw it via chat()'s vision path and asked about what it
+        // showed), so the transcript text alone still carries that signal.
         val transcript = history.joinToString("\n") { turn ->
-            "${if (turn.role == ChatRole.USER) "Artist" else "Bandly"}: ${turn.content}"
+            val speaker = if (turn.role == ChatRole.USER) "Artist" else "Bandly"
+            val text = if (turn.imageBase64 != null) {
+                "[shared a photo]" + if (turn.content.isNotBlank()) " ${turn.content}" else ""
+            } else {
+                turn.content
+            }
+            "$speaker: $text"
         }
 
         val summary = generationJobs.runStructured(
@@ -115,6 +125,16 @@ class IdentityChatService(
             screen reader — keep your replies plain, well-punctuated sentences
             (no decorative formatting, emoji, or ASCII art) so they read cleanly
             aloud.
+
+            The artist may attach a photo of themselves at any point — a
+            portrait, a stage shot, whatever they choose. If they do, look at
+            it as visual identity signal for the CURRENT dimension only (does
+            it read moody, bright, DIY, polished, vintage, minimal — whatever
+            actually informs their brand): fold that reading into your next
+            question naturally, the way you would if a friend showed you a
+            photo mid-conversation. Never comment on their physical
+            appearance, body, or attractiveness — that's not what this is for,
+            and it isn't relevant to their artist identity.
         """.trimIndent()
 
         val SUMMARY_SYSTEM_PROMPT = """

@@ -47,7 +47,17 @@ interface AiGenerationPort {
 
 enum class ChatRole { USER, ASSISTANT }
 
-data class ChatTurn(val role: ChatRole, val content: String)
+/** [imageBase64]/[imageMimeType] are only ever set on a USER turn — Claude
+ * supports vision natively, and the Identity Chat uses it so an artist can
+ * hand Bandly a photo instead of describing their visual identity in
+ * words. Optional and independent of [content]: a turn can be text with an
+ * image attached, not one or the other. */
+data class ChatTurn(
+    val role: ChatRole,
+    val content: String,
+    val imageBase64: String? = null,
+    val imageMimeType: String? = null,
+)
 
 data class GenerationRequest(
     val systemPrompt: String,
