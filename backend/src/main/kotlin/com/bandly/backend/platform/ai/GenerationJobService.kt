@@ -119,4 +119,34 @@ class GenerationJobService(
 
     fun events(jobId: UUID): Flux<String> =
         streams.events(jobId) ?: throw NotFoundException("No active generation stream for job $jobId")
+
+    /** One turn of a conversation (IdentityChatService) — same blocking-call
+     * shape and job bookkeeping as [runStructured], just no fallback: a
+     * failed chat reply should surface as an error to retry, not silently
+     * degrade into a fake conversational turn. */
+    fun runChat(bandId: UUID, module: String, systemPrompt: String, history: List<ChatTurn>): String {
+        val lastUserTurn = history.lastOrNull { it.role == ChatRole.USER }?.content.orEmpty()
+        val job = jobs.save(
+            GenerationJob(
+                bandId = bandId,
+                module = module,
+                status = GenerationStatus.RUNNING,
+                promptPayload = mapOf("system" to systemPrompt, "user" to lastUserTurn),
+            ),
+        )
+        return try {
+            val result = ai.chat(systemPrompt, history)
+            job.status = GenerationStatus.DONE
+            job.responsePayload = mapOf("content" to result)
+            job.completedAt = Instant.now()
+            jobs.save(job)
+            result
+        } catch (ex: Exception) {
+            job.status = GenerationStatus.FAILED
+            job.error = ex.message
+            job.completedAt = Instant.now()
+            jobs.save(job)
+            throw ex
+        }
+    }
 }

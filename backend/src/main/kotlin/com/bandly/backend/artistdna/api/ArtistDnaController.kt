@@ -1,6 +1,7 @@
 package com.bandly.backend.artistdna.api
 
 import com.bandly.backend.artistdna.application.ArtistDnaService
+import com.bandly.backend.artistdna.domain.ArtistDnaVersion
 import com.bandly.backend.identity.application.BandService
 import com.bandly.backend.identity.domain.BandRole
 import com.bandly.backend.platform.error.UnauthorizedException
@@ -47,7 +48,7 @@ class ArtistDnaController(
     fun generate(@PathVariable bandId: UUID): ArtistDnaVersionResponse {
         bandService.requireRole(bandId, requireAuthenticatedUser(), BandRole.OWNER, BandRole.ADMIN)
         val version = artistDnaService.generateDna(bandId)
-        return ArtistDnaVersionResponse(version.id, version.status, version.createdAt)
+        return toResponse(version)
     }
 
     @GetMapping("/current")
@@ -57,6 +58,18 @@ class ArtistDnaController(
             GeneratedAssetResponse(it.id, it.assetType, it.content, it.status)
         }
     }
+
+    /** The version marker itself (status + palette) — separate from
+     * /current, which returns the text assets. Lets a page load pick the
+     * colors back up without re-running generation. */
+    @GetMapping("/current-version")
+    fun currentVersion(@PathVariable bandId: UUID): ArtistDnaVersionResponse {
+        bandService.requireMembership(bandId, requireAuthenticatedUser())
+        return toResponse(artistDnaService.currentVersion(bandId))
+    }
+
+    private fun toResponse(version: ArtistDnaVersion) =
+        ArtistDnaVersionResponse(version.id, version.status, version.primaryColor, version.secondaryColor, version.createdAt)
 
     /** Kicks off a streamed regeneration; the response is the job to then
      * open at GET .../generation-jobs/{jobId}/events (GenerationJobController). */

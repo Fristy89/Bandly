@@ -20,6 +20,8 @@ data class IdentityProfileResponse(
 data class ArtistDnaVersionResponse(
     val id: UUID,
     val status: DnaStatus,
+    val primaryColor: String?,
+    val secondaryColor: String?,
     val createdAt: Instant,
 )
 

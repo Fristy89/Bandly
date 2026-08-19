@@ -95,6 +95,14 @@ class ArtistDnaService(
         return version
     }
 
+    fun currentVersion(bandId: UUID): ArtistDnaVersion {
+        val band = bands.findById(bandId).orElseThrow { NotFoundException("Band $bandId not found") }
+        val versionId = band.currentDnaVersionId
+            ?: throw NotFoundException("No Artist DNA generated yet for this band")
+        return dnaVersions.findById(versionId)
+            .orElseThrow { NotFoundException("Artist DNA version $versionId not found") }
+    }
+
     fun currentDna(bandId: UUID): List<GeneratedAsset> {
         val band = bands.findById(bandId).orElseThrow { NotFoundException("Band $bandId not found") }
         val versionId = band.currentDnaVersionId

@@ -2,6 +2,10 @@ package com.bandly.backend.platform.ai
 
 import org.slf4j.LoggerFactory
 import org.springframework.ai.chat.client.ChatClient
+import org.springframework.ai.chat.messages.AssistantMessage
+import org.springframework.ai.chat.messages.Message
+import org.springframework.ai.chat.messages.SystemMessage
+import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Component
 import reactor.core.publisher.Flux
@@ -58,4 +62,18 @@ class SpringAiGenerationAdapter(chatClientBuilder: ChatClient.Builder) : AiGener
             .user(request.userPrompt)
             .stream()
             .content()
+
+    override fun chat(systemPrompt: String, history: List<ChatTurn>): String {
+        val messages: List<Message> = listOf(SystemMessage(systemPrompt)) +
+            history.map {
+                if (it.role == ChatRole.USER) UserMessage(it.content) else AssistantMessage(it.content)
+            }
+        // Not .call().content() (which reads only the first Generation) —
+        // multi-turn Anthropic responses through this SDK path can come back
+        // as more than one Generation in ChatResponse.results (observed: an
+        // empty leading one, the real text in the second), so every result's
+        // text is concatenated rather than trusting there's exactly one.
+        val response = chatClient.prompt().messages(messages).call().chatResponse()
+        return response?.results.orEmpty().joinToString("") { it.output.text.orEmpty() }
+    }
 }

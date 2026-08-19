@@ -31,6 +31,8 @@ export type DnaStatus = "DRAFT" | "APPROVED";
 export type ArtistDnaVersionResponse = {
   id: string;
   status: DnaStatus;
+  primaryColor: string | null;
+  secondaryColor: string | null;
   createdAt: string;
 };
 
@@ -48,4 +50,13 @@ export type GeneratedAssetResponse = {
   assetType: AssetType;
   content: string;
   status: AssetStatus;
+};
+
+export type ChatTurn = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+export type ChatReplyResponse = {
+  reply: string;
 };

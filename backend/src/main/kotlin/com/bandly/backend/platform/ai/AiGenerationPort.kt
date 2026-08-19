@@ -33,7 +33,21 @@ interface AiGenerationPort {
 
     /** Token-by-token generation, for the SSE/"watch it being written" case. */
     fun streamText(request: GenerationRequest): Flux<String>
+
+    /**
+     * Multi-turn conversation — the Identity Chat (IdentityChatService) is
+     * the first caller. Separate from [generateText]/[generateStructured]
+     * rather than overloading [GenerationRequest] with an optional history
+     * list: those two are always exactly one system + one user turn, and
+     * conflating "single exchange" with "ongoing conversation" would make
+     * both shapes harder to read at every call site, not just this one.
+     */
+    fun chat(systemPrompt: String, history: List<ChatTurn>): String
 }
+
+enum class ChatRole { USER, ASSISTANT }
+
+data class ChatTurn(val role: ChatRole, val content: String)
 
 data class GenerationRequest(
     val systemPrompt: String,

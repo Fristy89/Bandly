@@ -35,4 +35,9 @@ class StubAiGenerationAdapter : AiGenerationPort {
             .delayElements(java.time.Duration.ofMillis(80))
             .map { "$it " }
     }
+
+    override fun chat(systemPrompt: String, history: List<ChatTurn>): String {
+        logger.info("bandly.ai.enabled=false — returning a stub chat reply instead of calling Anthropic")
+        return "[stub reply from Bandly — enable bandly.ai.enabled to actually chat]"
+    }
 }
