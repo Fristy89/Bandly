@@ -2,14 +2,18 @@
 
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/shared/lib/cn";
-import type { Band } from "@/shared/data/mock";
+import type { BandResponse } from "@/shared/api/types";
 import { IconChevronUpDown } from "@/shared/ui/icons";
+
+function roleLabel(role: BandResponse["myRole"]) {
+  return role === "OWNER" ? "Owner" : role === "ADMIN" ? "Admin" : "Member";
+}
 
 export function BandSwitcher({
   bands,
   currentBandId,
 }: {
-  bands: Band[];
+  bands: BandResponse[];
   currentBandId: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -43,7 +47,7 @@ export function BandSwitcher({
             {current.name}
           </span>
           <span className="block truncate text-xs text-ink-muted">
-            {current.location}
+            {roleLabel(current.myRole)}
           </span>
         </span>
         <IconChevronUpDown className="size-4 shrink-0 text-ink-faint" />

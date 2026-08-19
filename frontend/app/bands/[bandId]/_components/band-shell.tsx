@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import type { Band } from "@/shared/data/mock";
+import type { BandResponse } from "@/shared/api/types";
 import { cn } from "@/shared/lib/cn";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
@@ -16,7 +16,7 @@ export function BandShell({
 }: {
   bandId: string;
   bandName: string;
-  bands: Band[];
+  bands: BandResponse[];
   userName: string;
   userRole: string;
   children: ReactNode;

@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
-import { bands, currentUser } from "@/shared/data/mock";
-import { BandShell } from "./_components/band-shell";
+import { ConnectedBandShell } from "./_components/connected-band-shell";
 
 export default async function BandLayout({
   children,
@@ -10,17 +9,6 @@ export default async function BandLayout({
   params: Promise<{ bandId: string }>;
 }) {
   const { bandId } = await params;
-  const band = bands.find((candidate) => candidate.id === bandId) ?? bands[0];
 
-  return (
-    <BandShell
-      bandId={band.id}
-      bandName={band.name}
-      bands={bands}
-      userName={currentUser.name}
-      userRole={currentUser.role}
-    >
-      {children}
-    </BandShell>
-  );
+  return <ConnectedBandShell bandId={bandId}>{children}</ConnectedBandShell>;
 }

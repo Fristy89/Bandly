@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import type { Band } from "@/shared/data/mock";
+import type { BandResponse } from "@/shared/api/types";
 import { Badge } from "@/shared/ui/badge";
 import { BrandMark } from "@/shared/ui/brand-mark";
 import {
@@ -19,7 +19,6 @@ import { BandSwitcher } from "./band-switcher";
 import { UserMenu } from "./user-menu";
 
 const modules = [
-  { key: "artist-dna", label: "Artist DNA", icon: IconSpark },
   { key: "releases", label: "Releases", icon: IconReleases },
   { key: "content", label: "Content", icon: IconContent },
   { key: "relationships", label: "Relationships", icon: IconRelationships },
@@ -36,7 +35,7 @@ export function Sidebar({
   onNavigate,
 }: {
   bandId: string;
-  bands: Band[];
+  bands: BandResponse[];
   userName: string;
   userRole: string;
   onNavigate?: () => void;
@@ -45,6 +44,8 @@ export function Sidebar({
   const focusHref = `/bands/${bandId}/focus`;
   const focusActive =
     pathname === focusHref || pathname.startsWith(`${focusHref}/`);
+  const dnaHref = `/bands/${bandId}/dna`;
+  const dnaActive = pathname === dnaHref || pathname.startsWith(`${dnaHref}/`);
 
   return (
     <aside className="flex h-dvh w-[264px] shrink-0 flex-col border-r border-border bg-surface">
@@ -61,6 +62,14 @@ export function Sidebar({
           onClick={onNavigate}
         >
           Focus
+        </NavItem>
+        <NavItem
+          href={dnaHref}
+          icon={<IconSpark />}
+          active={dnaActive}
+          onClick={onNavigate}
+        >
+          Artist DNA
         </NavItem>
 
         <div className="mb-1 mt-5 flex items-center gap-2 px-3">

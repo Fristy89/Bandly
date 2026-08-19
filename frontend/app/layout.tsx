@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Fraunces, Geist, Geist_Mono, Kaushan_Script } from "next/font/google";
+import { AuthProvider } from "@/shared/auth/auth-context";
 import { themeInitScript } from "@/shared/lib/theme";
 import "./globals.css";
 
@@ -48,7 +49,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="min-h-full bg-paper font-sans text-ink">
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

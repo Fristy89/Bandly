@@ -3,18 +3,21 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { ApiError } from "@/shared/api/client";
+import { useAuth } from "@/shared/auth/auth-context";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!email.trim() || !password.trim()) {
       setError("Enter your email and password to continue.");
@@ -22,11 +25,13 @@ export default function LoginPage() {
     }
     setError(null);
     setLoading(true);
-    // Visual-design pass only — there's no auth backend yet, so this just
-    // simulates the wait and lands on the flagship screen.
-    window.setTimeout(() => {
-      router.push("/bands/marlow-bend/focus");
-    }, 650);
+    try {
+      await login(email.trim(), password);
+      router.push("/bands");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't reach Bandly — try again.");
+      setLoading(false);
+    }
   }
 
   return (
