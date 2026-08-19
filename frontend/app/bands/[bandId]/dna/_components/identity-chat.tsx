@@ -2,7 +2,14 @@
 
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type KeyboardEvent } from "react";
 import { apiFetch, ApiError } from "@/shared/api/client";
-import type { ArtistDnaVersionResponse, ChatReplyResponse, ChatTurn, GeneratedAssetResponse } from "@/shared/api/types";
+import type {
+  ArtistDnaVersionResponse,
+  BandResponse,
+  ChatReplyResponse,
+  ChatTurn,
+  GeneratedAssetResponse,
+  SiteContentData,
+} from "@/shared/api/types";
 import { useAuth } from "@/shared/auth/auth-context";
 import { resizeImageFile, type ResizedImage } from "@/shared/lib/image";
 import {
@@ -28,7 +35,7 @@ const OPENING_MESSAGES: Record<LanguageCode, string> = {
 
 const MIN_TURNS_BEFORE_FINISH = 3;
 
-type Phase = "chatting" | "summarizing" | "generating" | "done";
+type Phase = "chatting" | "summarizing" | "generating" | "signature" | "done";
 
 /**
  * The conversational alternative to a static form (IdentityQuestions is
@@ -51,6 +58,8 @@ export function IdentityChat({ bandId }: { bandId: string }) {
   const [phase, setPhase] = useState<Phase>("chatting");
   const [assets, setAssets] = useState<GeneratedAssetResponse[] | null>(null);
   const [version, setVersion] = useState<ArtistDnaVersionResponse | null>(null);
+  const [siteContent, setSiteContent] = useState<SiteContentData | null>(null);
+  const [bandName, setBandName] = useState("");
   const [speakReplies, setSpeakReplies] = useState(true);
   const [listening, setListening] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState("");
@@ -70,6 +79,18 @@ export function IdentityChat({ bandId }: { bandId: string }) {
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
+
+  // Only needed for the reveal screen's signature wordmark — the chat
+  // itself never shows the artist's name back to them.
+  useEffect(() => {
+    if (!accessToken) return;
+    apiFetch<BandResponse[]>("/api/v1/bands", { token: accessToken })
+      .then((bands) => {
+        const band = bands.find((b) => b.id === bandId);
+        if (band) setBandName(band.name);
+      })
+      .catch(() => {});
+  }, [accessToken, bandId]);
 
   // Still just the opening line, nothing typed yet — switching language
   // before the conversation starts should switch the greeting too.
@@ -196,6 +217,18 @@ export function IdentityChat({ bandId }: { bandId: string }) {
       });
       setVersion(generatedVersion);
       setAssets(result);
+
+      setPhase("signature");
+      try {
+        const content = await apiFetch<SiteContentData>(`/api/v1/bands/${bandId}/site/logo/generate`, {
+          method: "POST",
+          token: accessToken,
+        });
+        setSiteContent(content);
+      } catch {
+        // The signature wordmark is a flourish on top of the DNA text and
+        // colors, not a requirement — the reveal still stands without it.
+      }
       setPhase("done");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Couldn't build your DNA from this conversation — try again.");
@@ -204,7 +237,15 @@ export function IdentityChat({ bandId }: { bandId: string }) {
   }
 
   if (phase === "done" && assets) {
-    return <DnaResults bandId={bandId} assets={assets} version={version} />;
+    return (
+      <DnaResults
+        bandId={bandId}
+        bandName={bandName}
+        assets={assets}
+        version={version}
+        logoMark={siteContent?.logoMark ?? null}
+      />
+    );
   }
 
   return (
@@ -411,13 +452,15 @@ export function IdentityChat({ bandId }: { bandId: string }) {
           variant="secondary"
           onClick={finishAndBuildDna}
           disabled={!canFinish}
-          loading={phase === "summarizing" || phase === "generating"}
+          loading={phase === "summarizing" || phase === "generating" || phase === "signature"}
         >
           {phase === "summarizing"
             ? "Reading back what you said…"
             : phase === "generating"
               ? "Writing your DNA…"
-              : "Finish & build my DNA"}
+              : phase === "signature"
+                ? "Composing your signature…"
+                : "Finish & build my DNA"}
         </Button>
       </div>
     </div>

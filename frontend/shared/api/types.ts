@@ -63,3 +63,21 @@ export type ChatTurn = {
 export type ChatReplyResponse = {
   reply: string;
 };
+
+export type LogoMark = {
+  fontFamily: string;
+  colorHex: string;
+  italic: boolean;
+};
+
+// Partial mirror of SiteContentData.kt — only the fields the DNA reveal
+// screen reads (see dna-results.tsx). The full site content model (tracks,
+// shows, images, seo, ...) belongs to the not-yet-built site-editing admin
+// UI, not here.
+export type SiteContentData = {
+  artist: {
+    name: string;
+    tagline: string;
+  };
+  logoMark: LogoMark | null;
+};
