@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     template: "%s · Bandly",
   },
   description:
-    "Bandly is the artist operating system — release planning, booking, rights, and grants in one calm place.",
+    "Bandly is the Artist DNA Platform — one identity profile becomes bios, a voice, a color palette, and a signature that's actually yours, then flows into release planning, booking, rights, and grants.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
