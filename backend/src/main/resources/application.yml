@@ -3,7 +3,9 @@ spring:
     name: bandly-backend
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/bandly
+    # Port 5433: the Bandly Docker Postgres, not this machine's separate
+    # native Postgres on 5432 (see docker-compose.yml).
+    url: ${BANDLY_DB_URL:jdbc:postgresql://localhost:5433/bandly}
     username: bandly
     password: bandly
 

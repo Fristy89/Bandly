@@ -30,6 +30,9 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-flyway")
 	implementation("org.springframework.boot:spring-boot-starter-security")
+	// Argon2PasswordEncoder (SecurityConfig, per blueprint §11) needs Bouncy Castle
+	// on the runtime classpath — spring-security-crypto only declares it optional.
+	runtimeOnly("org.bouncycastle:bcprov-jdk18on:1.85.2")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
 	implementation("org.flywaydb:flyway-database-postgresql")

@@ -6,7 +6,9 @@ services:
       POSTGRES_USER: bandly
       POSTGRES_PASSWORD: bandly
     ports:
-      - "5432:5432"
+      # 5433, not 5432 — this host already runs a separate native Postgres
+      # (Homebrew) on 5432 for other projects; that one is left untouched.
+      - "5433:5432"
     volumes:
       - bandly_postgres_data:/var/lib/postgresql/data
     healthcheck:
