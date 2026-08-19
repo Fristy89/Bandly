@@ -24,15 +24,15 @@ class IdentityChatController(
     @PostMapping
     fun reply(@PathVariable bandId: UUID, @Valid @RequestBody request: ChatRequest): ChatReplyResponse {
         bandService.requireMembership(bandId, requireAuthenticatedUser())
-        val reply = identityChatService.reply(bandId, toTurns(request.history))
+        val reply = identityChatService.reply(bandId, toTurns(request.history), request.language)
         return ChatReplyResponse(reply)
     }
 
     @PostMapping("/summarize")
     fun summarize(@PathVariable bandId: UUID, @Valid @RequestBody request: ChatRequest): IdentityProfileResponse {
         bandService.requireMembership(bandId, requireAuthenticatedUser())
-        val profile = identityChatService.summarize(bandId, toTurns(request.history))
-        return IdentityProfileResponse(profile.id, profile.answers, profile.updatedAt)
+        val profile = identityChatService.summarize(bandId, toTurns(request.history), request.language)
+        return IdentityProfileResponse(profile.id, profile.answers, profile.language, profile.updatedAt)
     }
 
     private fun toTurns(history: List<ChatTurnRequest>): List<ChatTurn> =

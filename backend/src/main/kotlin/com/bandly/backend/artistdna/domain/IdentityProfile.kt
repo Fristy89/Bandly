@@ -38,6 +38,13 @@ class IdentityProfile(
     @Column(nullable = false, columnDefinition = "jsonb")
     var answers: Map<String, String> = emptyMap(),
 
+    /** ISO 639-1 — "nl" | "de" | "en" today (the Euregio launch market: the
+     * Identity Chat, and everything ArtistDnaService generates from this
+     * profile, follow it). Defaults to English so profiles saved before
+     * this field existed keep working without a migration backfill. */
+    @Column(nullable = false, length = 2)
+    var language: String = "en",
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     var createdAt: Instant = Instant.now(),

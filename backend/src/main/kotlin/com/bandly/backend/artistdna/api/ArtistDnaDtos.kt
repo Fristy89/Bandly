@@ -9,11 +9,13 @@ import java.util.UUID
 
 data class IdentityProfileRequest(
     @field:NotEmpty val answers: Map<String, String>,
+    val language: String = "en",
 )
 
 data class IdentityProfileResponse(
     val id: UUID,
     val answers: Map<String, String>,
+    val language: String,
     val updatedAt: Instant,
 )
 

@@ -1,6 +1,7 @@
 package com.bandly.backend.artistdna.application
 
 import com.bandly.backend.artistdna.domain.IdentityProfile
+import com.bandly.backend.artistdna.domain.SupportedLanguages
 import com.bandly.backend.platform.ai.ChatRole
 import com.bandly.backend.platform.ai.ChatTurn
 import com.bandly.backend.platform.ai.GenerationJobService
@@ -23,14 +24,20 @@ class IdentityChatService(
     private val artistDnaService: ArtistDnaService,
 ) {
 
-    fun reply(bandId: UUID, history: List<ChatTurn>): String =
-        generationJobs.runChat(bandId, "identity-chat", BANDLY_SYSTEM_PROMPT, history)
+    fun reply(bandId: UUID, history: List<ChatTurn>, language: String): String {
+        val resolvedLanguage = if (SupportedLanguages.isSupported(language)) language.lowercase() else "en"
+        val prompt = "$BANDLY_SYSTEM_PROMPT\n\nConduct this whole conversation in " +
+            "${SupportedLanguages.nameFor(resolvedLanguage)} — the artist chose that language, so your " +
+            "replies (and your reading of their answers) should be in it too."
+        return generationJobs.runChat(bandId, "identity-chat", prompt, history)
+    }
 
     /** Turns the conversation into a saved Identity Profile — the same
      * saveIdentityProfile a manual form would call, so DNA generation
      * doesn't need to know whether the artist typed answers or talked
      * them through. */
-    fun summarize(bandId: UUID, history: List<ChatTurn>): IdentityProfile {
+    fun summarize(bandId: UUID, history: List<ChatTurn>, language: String): IdentityProfile {
+        val resolvedLanguage = if (SupportedLanguages.isSupported(language)) language.lowercase() else "en"
         val transcript = history.joinToString("\n") { turn ->
             "${if (turn.role == ChatRole.USER) "Artist" else "Bandly"}: ${turn.content}"
         }
@@ -38,7 +45,12 @@ class IdentityChatService(
         val summary = generationJobs.runStructured(
             bandId = bandId,
             module = "identity-chat-summary",
-            request = GenerationRequest(systemPrompt = SUMMARY_SYSTEM_PROMPT, userPrompt = transcript),
+            request = GenerationRequest(
+                systemPrompt = "$SUMMARY_SYSTEM_PROMPT\n\nThe conversation is in " +
+                    "${SupportedLanguages.nameFor(resolvedLanguage)} — write the seven fields in that " +
+                    "same language, in the artist's own words, not translated to English.",
+                userPrompt = transcript,
+            ),
             responseType = IdentitySummary::class.java,
             fallback = { stubSummary() },
         )
@@ -52,7 +64,7 @@ class IdentityChatService(
             "audience" to summary.audience,
             "feeling" to summary.feeling,
         )
-        return artistDnaService.saveIdentityProfile(bandId, answers)
+        return artistDnaService.saveIdentityProfile(bandId, answers, resolvedLanguage)
     }
 
     private fun stubSummary() = IdentitySummary(

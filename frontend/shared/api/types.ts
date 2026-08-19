@@ -23,6 +23,7 @@ export type BandResponse = {
 export type IdentityProfileResponse = {
   id: string;
   answers: Record<string, string>;
+  language: string;
   updatedAt: string;
 };
 

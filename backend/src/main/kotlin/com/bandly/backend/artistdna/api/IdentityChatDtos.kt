@@ -10,6 +10,9 @@ data class ChatTurnRequest(
 
 data class ChatRequest(
     @field:NotEmpty val history: List<ChatTurnRequest>,
+    /** ISO 639-1 — "nl" | "de" | "en". Unrecognized values fall back to
+     * English in the service layer rather than rejecting the request. */
+    val language: String = "en",
 )
 
 data class ChatReplyResponse(val reply: String)

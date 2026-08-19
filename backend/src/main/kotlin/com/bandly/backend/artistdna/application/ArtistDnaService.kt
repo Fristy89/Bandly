@@ -5,6 +5,7 @@ import com.bandly.backend.artistdna.domain.AssetType
 import com.bandly.backend.artistdna.domain.GeneratedAsset
 import com.bandly.backend.artistdna.domain.IdentityProfile
 import com.bandly.backend.artistdna.domain.IdentityQuestions
+import com.bandly.backend.artistdna.domain.SupportedLanguages
 import com.bandly.backend.artistdna.infrastructure.ArtistDnaVersionRepository
 import com.bandly.backend.artistdna.infrastructure.GeneratedAssetRepository
 import com.bandly.backend.artistdna.infrastructure.IdentityProfileRepository
@@ -39,13 +40,15 @@ class ArtistDnaService(
 ) {
 
     @Transactional
-    fun saveIdentityProfile(bandId: UUID, answers: Map<String, String>): IdentityProfile {
+    fun saveIdentityProfile(bandId: UUID, answers: Map<String, String>, language: String = "en"): IdentityProfile {
+        val resolvedLanguage = if (SupportedLanguages.isSupported(language)) language.lowercase() else "en"
         val profile = identityProfiles.findByBandId(bandId)
         return if (profile != null) {
             profile.answers = answers
+            profile.language = resolvedLanguage
             identityProfiles.save(profile)
         } else {
-            identityProfiles.save(IdentityProfile(bandId = bandId, answers = answers))
+            identityProfiles.save(IdentityProfile(bandId = bandId, answers = answers, language = resolvedLanguage))
         }
     }
 
@@ -183,6 +186,9 @@ class ArtistDnaService(
             palette; avoid defaulting to generic "AI-chosen" colors (the usual
             purple-blue gradients or safe pastel blues) when the identity actually
             points somewhere more specific.
+
+            Write every text field in ${SupportedLanguages.nameFor(profile.language)} —
+            that's the language the artist answered these questions in.
         """.trimIndent(),
     )
 

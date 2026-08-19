@@ -4,13 +4,26 @@ import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 
 import { apiFetch, ApiError } from "@/shared/api/client";
 import type { ArtistDnaVersionResponse, ChatReplyResponse, ChatTurn, GeneratedAssetResponse } from "@/shared/api/types";
 import { useAuth } from "@/shared/auth/auth-context";
+import {
+  listenOnce,
+  speak,
+  speechRecognitionSupported,
+  speechSynthesisSupported,
+  stopSpeaking,
+  SUPPORTED_LANGUAGES,
+  type LanguageCode,
+} from "@/shared/lib/speech";
 import { Avatar } from "@/shared/ui/avatar";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
+import { IconMicrophone, IconSpeaker, IconSpeakerMuted } from "@/shared/ui/icons";
 import { DnaResults } from "./dna-results";
 
-const OPENING_MESSAGE =
-  "Hi — I'm Bandly. I want to get to know you as an artist so everything I help you write actually sounds like you, not generic. No wrong answers here. What made you start making music?";
+const OPENING_MESSAGES: Record<LanguageCode, string> = {
+  en: "Hi — I'm Bandly. I want to get to know you as an artist so everything I help you write actually sounds like you, not generic. No wrong answers here. What made you start making music?",
+  nl: "Hoi — ik ben Bandly. Ik wil je leren kennen als artiest, zodat alles wat ik straks help schrijven ook echt naar jou klinkt. Geen foute antwoorden. Wat bracht je ertoe om muziek te gaan maken?",
+  de: "Hallo — ich bin Bandly. Ich möchte dich als Künstler kennenlernen, damit alles, wobei ich dir später helfe, wirklich nach dir klingt. Es gibt keine falschen Antworten. Was hat dich dazu gebracht, Musik zu machen?",
+};
 
 const MIN_TURNS_BEFORE_FINISH = 3;
 
@@ -21,22 +34,31 @@ type Phase = "chatting" | "summarizing" | "generating" | "done";
  * still what gets extracted into, on the backend — see
  * IdentityChatService.summarize) — built accessibly from the start, not
  * retrofitted: the transcript is a proper aria-live log so screen reader
- * users hear Bandly's replies as they arrive, "Bandly is typing" is
- * announced through a separate live region rather than only shown
- * visually, and every control works from the keyboard alone.
+ * users hear Bandly's replies as they arrive, voice output/input are real
+ * (Web Speech API — see shared/lib/speech.ts) not just visual affordances,
+ * and every control works from the keyboard alone. Euregio launch market:
+ * Dutch, German, and English, both for the conversation and — via
+ * IdentityProfile.language on the backend — for the DNA generated from it.
  */
 export function IdentityChat({ bandId }: { bandId: string }) {
   const { accessToken } = useAuth();
-  const [messages, setMessages] = useState<ChatTurn[]>([{ role: "assistant", content: OPENING_MESSAGE }]);
+  const [language, setLanguage] = useState<LanguageCode>("nl");
+  const [messages, setMessages] = useState<ChatTurn[]>([{ role: "assistant", content: OPENING_MESSAGES.nl }]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("chatting");
   const [assets, setAssets] = useState<GeneratedAssetResponse[] | null>(null);
   const [version, setVersion] = useState<ArtistDnaVersionResponse | null>(null);
+  const [speakReplies, setSpeakReplies] = useState(true);
+  const [listening, setListening] = useState(false);
+  const [interimTranscript, setInterimTranscript] = useState("");
 
   const logRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const stopListeningRef = useRef<(() => void) | null>(null);
+  const ttsSupported = speechSynthesisSupported();
+  const sttSupported = speechRecognitionSupported();
 
   const userTurnCount = messages.filter((m) => m.role === "user").length;
   const canFinish = userTurnCount >= MIN_TURNS_BEFORE_FINISH && phase === "chatting";
@@ -45,22 +67,33 @@ export function IdentityChat({ bandId }: { bandId: string }) {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
-  async function sendMessage() {
-    const text = input.trim();
+  // Still just the opening line, nothing typed yet — switching language
+  // before the conversation starts should switch the greeting too.
+  function handleLanguageChange(next: LanguageCode) {
+    setLanguage(next);
+    if (messages.length === 1 && messages[0].role === "assistant") {
+      setMessages([{ role: "assistant", content: OPENING_MESSAGES[next] }]);
+    }
+  }
+
+  async function sendMessage(overrideText?: string) {
+    const text = (overrideText ?? input).trim();
     if (!text || sending || !accessToken) return;
 
     const nextMessages: ChatTurn[] = [...messages, { role: "user", content: text }];
     setMessages(nextMessages);
     setInput("");
+    setInterimTranscript("");
     setError(null);
     setSending(true);
     try {
       const response = await apiFetch<ChatReplyResponse>(`/api/v1/bands/${bandId}/dna/chat`, {
         method: "POST",
         token: accessToken,
-        body: JSON.stringify({ history: nextMessages }),
+        body: JSON.stringify({ history: nextMessages, language }),
       });
       setMessages((current) => [...current, { role: "assistant", content: response.reply }]);
+      if (speakReplies && ttsSupported) speak(response.reply, language);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Bandly didn't respond — try sending that again.");
     } finally {
@@ -81,6 +114,37 @@ export function IdentityChat({ bandId }: { bandId: string }) {
     }
   }
 
+  function toggleSpeakReplies() {
+    if (speakReplies) stopSpeaking();
+    setSpeakReplies((value) => !value);
+  }
+
+  function startListening() {
+    if (listening) return;
+    stopSpeaking(); // don't talk over yourself while the artist is trying to speak
+    setError(null);
+    setListening(true);
+    setInterimTranscript("");
+    const handle = listenOnce(language, {
+      onInterim: (text) => setInterimTranscript(text),
+      onFinal: (text) => {
+        setInterimTranscript("");
+        if (text) sendMessage(text);
+      },
+      onError: (message) => {
+        setError(message);
+        setListening(false);
+      },
+      onEnd: () => setListening(false),
+    });
+    stopListeningRef.current = handle.stop;
+  }
+
+  function stopListening() {
+    stopListeningRef.current?.();
+    setListening(false);
+  }
+
   async function finishAndBuildDna() {
     if (!accessToken) return;
     setError(null);
@@ -89,7 +153,7 @@ export function IdentityChat({ bandId }: { bandId: string }) {
       await apiFetch(`/api/v1/bands/${bandId}/dna/chat/summarize`, {
         method: "POST",
         token: accessToken,
-        body: JSON.stringify({ history: messages }),
+        body: JSON.stringify({ history: messages, language }),
       });
       setPhase("generating");
       const generatedVersion = await apiFetch<ArtistDnaVersionResponse>(`/api/v1/bands/${bandId}/dna/generate`, {
@@ -114,12 +178,44 @@ export function IdentityChat({ bandId }: { bandId: string }) {
 
   return (
     <div className="mx-auto flex h-full max-w-2xl flex-col px-6 py-8">
-      <header className="mb-4">
-        <h1 className="font-display text-display-md text-ink">Artist DNA</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          A conversation, not a form — talk to Bandly about who you are as an artist, then turn it into your DNA
-          whenever you&apos;re ready.
-        </p>
+      <header className="mb-4 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-display-md text-ink">Artist DNA</h1>
+          <p className="mt-1 text-sm text-ink-muted">
+            A conversation, not a form — talk to Bandly about who you are as an artist, then turn it into your DNA
+            whenever you&apos;re ready.
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <div className="flex gap-1 rounded-md bg-surface p-1" role="radiogroup" aria-label="Conversation language">
+            {SUPPORTED_LANGUAGES.map((lang) => (
+              <button
+                key={lang.code}
+                type="button"
+                role="radio"
+                aria-checked={language === lang.code}
+                onClick={() => handleLanguageChange(lang.code)}
+                className={`rounded px-2 py-1 text-xs font-medium transition-colors ${
+                  language === lang.code ? "bg-surface-raised text-ink shadow-sm" : "text-ink-muted hover:text-ink"
+                }`}
+              >
+                {lang.code.toUpperCase()}
+              </button>
+            ))}
+          </div>
+          {ttsSupported ? (
+            <button
+              type="button"
+              onClick={toggleSpeakReplies}
+              aria-pressed={speakReplies}
+              title={speakReplies ? "Bandly's voice is on" : "Bandly's voice is off"}
+              className="flex size-8 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-surface hover:text-ink"
+            >
+              {speakReplies ? <IconSpeaker className="size-4" /> : <IconSpeakerMuted className="size-4" />}
+              <span className="sr-only">{speakReplies ? "Turn off Bandly's voice" : "Turn on Bandly's voice"}</span>
+            </button>
+          ) : null}
+        </div>
       </header>
 
       <Card className="flex min-h-0 flex-1 flex-col">
@@ -147,7 +243,7 @@ export function IdentityChat({ bandId }: { bandId: string }) {
                 <Avatar name="You" size="sm" />
               )}
               <p
-                className={`max-w-[80%] rounded-xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                className={`group relative max-w-[80%] rounded-xl px-3.5 py-2.5 text-sm leading-relaxed ${
                   message.role === "user"
                     ? "bg-accent text-on-accent"
                     : "bg-surface-raised text-ink"
@@ -155,11 +251,21 @@ export function IdentityChat({ bandId }: { bandId: string }) {
               >
                 <span className="sr-only">{message.role === "user" ? "You said: " : "Bandly says: "}</span>
                 {message.content}
+                {message.role === "assistant" && ttsSupported ? (
+                  <button
+                    type="button"
+                    onClick={() => speak(message.content, language)}
+                    className="ml-2 inline-flex size-5 items-center justify-center rounded text-ink-faint opacity-0 transition-opacity hover:text-ink focus-visible:opacity-100 group-hover:opacity-100"
+                  >
+                    <IconSpeaker className="size-3.5" />
+                    <span className="sr-only">Replay this message aloud</span>
+                  </button>
+                ) : null}
               </p>
             </div>
           ))}
           <p aria-live="polite" className="sr-only">
-            {sending ? "Bandly is typing…" : ""}
+            {sending ? "Bandly is typing…" : listening ? "Listening…" : ""}
           </p>
           {sending ? (
             <div className="flex items-center gap-2.5" aria-hidden="true">
@@ -180,17 +286,34 @@ export function IdentityChat({ bandId }: { bandId: string }) {
             Your message to Bandly
           </label>
           <div className="flex items-end gap-2.5">
+            {sttSupported ? (
+              <button
+                type="button"
+                onClick={listening ? stopListening : startListening}
+                aria-pressed={listening}
+                title={listening ? "Stop listening" : "Speak your answer"}
+                className={`flex size-10 shrink-0 items-center justify-center rounded-lg border transition-colors ${
+                  listening
+                    ? "border-attention bg-attention-soft text-attention"
+                    : "border-border text-ink-muted hover:border-border-strong hover:text-ink"
+                }`}
+              >
+                <IconMicrophone className="size-4" />
+                <span className="sr-only">{listening ? "Stop listening" : "Speak your answer"}</span>
+              </button>
+            ) : null}
             <textarea
               id="chat-input"
               ref={inputRef}
-              value={input}
+              value={listening ? interimTranscript : input}
               onChange={(event) => setInput(event.target.value)}
               onKeyDown={handleKeyDown}
+              readOnly={listening}
               rows={1}
-              placeholder="Type your answer…"
+              placeholder={listening ? "Listening…" : "Type your answer…"}
               className="max-h-32 flex-1 resize-none rounded-lg border border-border bg-paper px-3 py-2.5 text-sm text-ink placeholder:text-ink-faint focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
             />
-            <Button type="submit" size="md" loading={sending} disabled={!input.trim()}>
+            <Button type="submit" size="md" loading={sending} disabled={!input.trim() || listening}>
               Send
             </Button>
           </div>

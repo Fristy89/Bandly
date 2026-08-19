@@ -179,3 +179,36 @@ export function IconArrowRight(props: IconProps) {
     </svg>
   );
 }
+
+/** Microphone — a capsule and its stand, nothing more literal than that. */
+export function IconMicrophone(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <rect x="9" y="3.5" width="6" height="11" rx="3" />
+      <path d="M6 11.5a6 6 0 0 0 12 0" />
+      <path d="M12 17.5v3.2" />
+      <path d="M8.75 20.7h6.5" />
+    </svg>
+  );
+}
+
+/** Speaker — a cone and two arcs standing in for sound, not a literal icon. */
+export function IconSpeaker(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4.5 9.5h3.2L12 5.5v13l-4.3-4H4.5z" strokeLinejoin="round" />
+      <path d="M15.8 9.2a4.6 4.6 0 0 1 0 5.6" />
+      <path d="M18.4 6.8a8.4 8.4 0 0 1 0 10.4" />
+    </svg>
+  );
+}
+
+export function IconSpeakerMuted(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4.5 9.5h3.2L12 5.5v13l-4.3-4H4.5z" strokeLinejoin="round" />
+      <path d="M15.5 9.5 20 14" />
+      <path d="M20 9.5 15.5 14" />
+    </svg>
+  );
+}

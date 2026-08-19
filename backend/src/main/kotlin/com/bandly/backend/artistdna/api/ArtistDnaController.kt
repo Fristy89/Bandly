@@ -30,15 +30,15 @@ class ArtistDnaController(
         @Valid @RequestBody request: IdentityProfileRequest,
     ): IdentityProfileResponse {
         bandService.requireMembership(bandId, requireAuthenticatedUser())
-        val profile = artistDnaService.saveIdentityProfile(bandId, request.answers)
-        return IdentityProfileResponse(profile.id, profile.answers, profile.updatedAt)
+        val profile = artistDnaService.saveIdentityProfile(bandId, request.answers, request.language)
+        return IdentityProfileResponse(profile.id, profile.answers, profile.language, profile.updatedAt)
     }
 
     @GetMapping("/identity-profile")
     fun identityProfile(@PathVariable bandId: UUID): IdentityProfileResponse {
         bandService.requireMembership(bandId, requireAuthenticatedUser())
         val profile = artistDnaService.identityProfile(bandId)
-        return IdentityProfileResponse(profile.id, profile.answers, profile.updatedAt)
+        return IdentityProfileResponse(profile.id, profile.answers, profile.language, profile.updatedAt)
     }
 
     /** Only owner/admin trigger a (re)compile — it changes what every future
