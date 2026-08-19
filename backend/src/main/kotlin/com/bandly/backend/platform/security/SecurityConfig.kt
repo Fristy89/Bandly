@@ -44,6 +44,9 @@ class SecurityConfig(
                     "/swagger-ui/**",
                     "/swagger-ui.html",
                     "/v3/api-docs/**",
+                    // The site-renderer app resolves a band's public website
+                    // through here — same trust level as the website itself.
+                    "/api/v1/public/**",
                 ).permitAll()
                 it.anyRequest().authenticated()
             }

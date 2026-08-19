@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+/* A generic, adaptable starter look — not a port of any one artist's brand
+   (the reference site's neon-orange carnival identity is Neet Euverslaon's
+   own, not a template to hardcode for every Bandly customer). Built on the
+   same warm/ink vocabulary as the main Bandly app for family resemblance,
+   tuned for a public marketing page rather than a daily-use tool: bolder
+   contrast, a dark ground by default (most artist sites read better dark),
+   generous type. Per-band theming beyond this is a real follow-up, not
+   attempted here. */
+:root {
+  --ink: #f5f1e8;
+  --ink-muted: #b8afa0;
+  --paper: #0f0d0a;
+  --surface: #1a1613;
+  --border: #2e2822;
+  --accent: #e0913f;
+  --accent-strong: #f2bd6e;
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+
+  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-geist-sans);
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--paper);
+}
