@@ -6,6 +6,7 @@ import com.bandly.backend.platform.ai.ChatTurn
 import com.bandly.backend.platform.error.ApiException
 import com.bandly.backend.platform.error.UnauthorizedException
 import com.bandly.backend.platform.security.currentUserId
+import com.bandly.backend.artistdna.application.ChatModeration
 import com.bandly.backend.artistdna.application.IdentityChatService
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -27,8 +28,18 @@ class IdentityChatController(
     @PostMapping
     fun reply(@PathVariable bandId: UUID, @Valid @RequestBody request: ChatRequest): ChatReplyResponse {
         bandService.requireMembership(bandId, requireAuthenticatedUser())
+        validateNotAbusive(request.history.lastOrNull())
         val reply = identityChatService.reply(bandId, toTurns(request.history), request.language)
         return ChatReplyResponse(reply)
+    }
+
+    /** Only the newest turn — everything earlier in the history already
+     * passed this same check on a prior request, so there's no reason to
+     * re-scan the whole transcript every time. */
+    private fun validateNotAbusive(latestTurn: ChatTurnRequest?) {
+        if (latestTurn != null && ChatModeration.containsProfanity(latestTurn.content)) {
+            throw ApiException(HttpStatus.BAD_REQUEST, "Let's keep this conversation respectful — try rephrasing that.")
+        }
     }
 
     @PostMapping("/summarize")

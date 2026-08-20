@@ -12,6 +12,7 @@ import type {
 } from "@/shared/api/types";
 import { useAuth } from "@/shared/auth/auth-context";
 import { resizeImageFile, type ResizedImage } from "@/shared/lib/image";
+import { containsProfanity } from "@/shared/lib/moderation";
 import {
   listenOnce,
   listVoicesFor,
@@ -126,6 +127,11 @@ export function IdentityChat({ bandId }: { bandId: string }) {
   async function sendMessage(overrideText?: string) {
     const text = (overrideText ?? input).trim();
     if ((!text && !pendingImage) || sending || !accessToken) return;
+
+    if (containsProfanity(text)) {
+      setError("Let's keep this conversation respectful — try rephrasing that.");
+      return;
+    }
 
     const nextMessages: ChatTurn[] = [
       ...messages,
