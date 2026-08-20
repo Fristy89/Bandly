@@ -23,4 +23,8 @@ data class AiProperties(
 data class TtsProperties(
     val enabled: Boolean = false,
     val googleApiKey: String = "",
+    // Gemini TTS voices aren't gendered in the API itself — these are
+    // Google's own style descriptors, not verified gender labels. Kore is
+    // Google's own flagship example voice across their docs/samples.
+    val voice: String = "Kore",
 )

@@ -56,8 +56,11 @@ bandly:
     # Same pattern as bandly.ai above: an explicit switch, not key-sniffing.
     # Off by default — the frontend falls back to the browser's own voice
     # (shared/lib/speech.ts) when this is disabled or the call fails.
+    # A Gemini API key (generativelanguage.googleapis.com), not a Google
+    # Cloud Text-to-Speech key — see GeminiTextToSpeechAdapter for why.
     enabled: ${BANDLY_TTS_ENABLED:false}
     google-api-key: ${BANDLY_TTS_GOOGLE_API_KEY:}
+    voice: ${BANDLY_TTS_VOICE:Kore}
 
 logging:
   level:
