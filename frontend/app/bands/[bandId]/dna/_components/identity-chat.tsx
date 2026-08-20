@@ -149,7 +149,9 @@ export function IdentityChat({ bandId }: { bandId: string }) {
         body: JSON.stringify({ history: nextMessages, language }),
       });
       setMessages((current) => [...current, { role: "assistant", content: response.reply }]);
-      if (speakReplies && ttsSupported) void speak(response.reply, language, selectedVoiceURI);
+      if (speakReplies && ttsSupported) {
+        void speak(response.reply, language, { voiceURI: selectedVoiceURI, accessToken });
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Bandly didn't respond — try sending that again.");
     } finally {
@@ -377,7 +379,7 @@ export function IdentityChat({ bandId }: { bandId: string }) {
                 {message.role === "assistant" && ttsSupported ? (
                   <button
                     type="button"
-                    onClick={() => void speak(message.content, language, selectedVoiceURI)}
+                    onClick={() => void speak(message.content, language, { voiceURI: selectedVoiceURI, accessToken })}
                     className="ml-2 inline-flex size-5 items-center justify-center rounded text-ink-faint opacity-0 transition-opacity hover:text-ink focus-visible:opacity-100 group-hover:opacity-100"
                   >
                     <IconSpeaker className="size-3.5" />

@@ -18,3 +18,9 @@ data class CorsProperties(
 data class AiProperties(
     val enabled: Boolean = false,
 )
+
+@ConfigurationProperties(prefix = "bandly.tts")
+data class TtsProperties(
+    val enabled: Boolean = false,
+    val googleApiKey: String = "",
+)

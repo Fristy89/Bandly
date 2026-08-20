@@ -52,6 +52,12 @@ bandly:
     # and it's what makes the stub adapter path a deliberate choice instead of an
     # accident. Flip to true (and set ANTHROPIC_API_KEY) to call the real model.
     enabled: ${BANDLY_AI_ENABLED:false}
+  tts:
+    # Same pattern as bandly.ai above: an explicit switch, not key-sniffing.
+    # Off by default — the frontend falls back to the browser's own voice
+    # (shared/lib/speech.ts) when this is disabled or the call fails.
+    enabled: ${BANDLY_TTS_ENABLED:false}
+    google-api-key: ${BANDLY_TTS_GOOGLE_API_KEY:}
 
 logging:
   level:

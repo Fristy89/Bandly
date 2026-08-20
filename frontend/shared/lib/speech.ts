@@ -1,8 +1,12 @@
-// Voice I/O for the Identity Chat, built on the browser's own Web Speech
-// API — no new backend service, no API key, works the moment the browser
-// supports it (Chrome/Edge/Safari; feature-detected everywhere it's used,
-// since Firefox doesn't implement SpeechRecognition and some browsers have
-// zero synthesis voices installed).
+// Voice I/O for the Identity Chat. Speech OUTPUT prefers a real server-side
+// neural TTS call (see speak() below) and falls back to the browser's own
+// Web Speech API; speech INPUT (listenOnce) is the browser's own
+// SpeechRecognition only — there's no server-side equivalent for that yet.
+// Both are feature-detected everywhere they're used, since Firefox doesn't
+// implement SpeechRecognition and some browsers have zero synthesis voices
+// installed.
+
+import { apiFetchBlob } from "@/shared/api/client";
 
 export type LanguageCode = "nl" | "de" | "en";
 
@@ -75,24 +79,75 @@ export async function pickVoice(language: LanguageCode): Promise<SpeechSynthesis
   return pool[0];
 }
 
-export async function speak(text: string, language: LanguageCode, voiceURI?: string) {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel(); // one voice at a time — a new reply shouldn't queue behind an old one
+let currentAudio: HTMLAudioElement | null = null;
+
+// Once a server-side synthesize call fails once (feature disabled, no
+// network, ...) there's no reason to retry it on every single reply for
+// the rest of the session — just use the browser's own voice from then on.
+let remoteTtsAvailable = true;
+
+async function speakViaServer(text: string, language: LanguageCode, accessToken: string): Promise<boolean> {
+  try {
+    const blob = await apiFetchBlob("/api/v1/speech/synthesize", {
+      method: "POST",
+      token: accessToken,
+      body: JSON.stringify({ text, languageCode: bcp47For(language) }),
+    });
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.addEventListener("ended", () => URL.revokeObjectURL(url), { once: true });
+    currentAudio = audio;
+    await audio.play();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Bandly's real voice: a cloud neural TTS call to the backend
+ * (GoogleTextToSpeechAdapter — see platform/speech on the backend) when
+ * it's configured there, which sounds dramatically less robotic than any
+ * local system voice ever will. Falls back to the browser's own
+ * speechSynthesis the moment that call fails for any reason (feature
+ * disabled, offline, ...), so voice output still works even with no
+ * server-side TTS configured at all — just not as naturally.
+ */
+export async function speak(
+  text: string,
+  language: LanguageCode,
+  options: { voiceURI?: string; accessToken?: string | null } = {},
+) {
+  if (typeof window === "undefined") return;
+  stopSpeaking();
+
+  if (remoteTtsAvailable && options.accessToken) {
+    const played = await speakViaServer(text, language, options.accessToken);
+    if (played) return;
+    remoteTtsAvailable = false;
+  }
+
+  if (!window.speechSynthesis) return;
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = bcp47For(language);
   utterance.rate = 0.96; // the default 1.0 reads noticeably flatter/faster on most synthetic voices
   utterance.pitch = 1;
 
-  const voice = voiceURI
-    ? (await listVoicesFor(language)).find((v) => v.voiceURI === voiceURI)
+  const voice = options.voiceURI
+    ? (await listVoicesFor(language)).find((v) => v.voiceURI === options.voiceURI)
     : await pickVoice(language);
   if (voice) utterance.voice = voice;
   window.speechSynthesis.speak(utterance);
 }
 
 export function stopSpeaking() {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio = null;
+  }
+  if (typeof window !== "undefined" && window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
 }
 
 export function speechSynthesisSupported(): boolean {

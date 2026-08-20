@@ -48,3 +48,33 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   }
   return (await response.json()) as T;
 }
+
+/** Same request/auth/error handling as apiFetch, for the one endpoint that
+ * returns audio bytes instead of JSON (speech synthesis) — see
+ * shared/lib/speech.ts. */
+export async function apiFetchBlob(path: string, options: ApiFetchOptions = {}): Promise<Blob> {
+  const { token, headers, ...rest } = options;
+
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...rest,
+    credentials: "include",
+    headers: {
+      ...(rest.body ? { "Content-Type": "application/json" } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...headers,
+    },
+  });
+
+  if (!response.ok) {
+    let message = response.statusText || `Request failed (${response.status})`;
+    try {
+      const problem = await response.json();
+      message = problem.detail ?? problem.title ?? message;
+    } catch {
+      // Body wasn't JSON — keep the status text.
+    }
+    throw new ApiError(response.status, message);
+  }
+
+  return response.blob();
+}
