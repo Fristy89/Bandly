@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
+import org.springframework.web.client.RestClientResponseException
 import java.util.Base64
 import java.util.concurrent.ConcurrentHashMap
 
@@ -21,12 +22,16 @@ import java.util.concurrent.ConcurrentHashMap
 @Component
 @ConditionalOnProperty(prefix = "bandly.tts", name = ["enabled"], havingValue = "true")
 class GoogleTextToSpeechAdapter(
-    restClientBuilder: RestClient.Builder,
     private val properties: TtsProperties,
 ) : TextToSpeechPort {
 
     private val logger = LoggerFactory.getLogger(GoogleTextToSpeechAdapter::class.java)
-    private val restClient = restClientBuilder.baseUrl("https://texttospeech.googleapis.com/v1").build()
+    // Built directly rather than injecting RestClient.Builder — this app's
+    // Spring Boot setup doesn't autoconfigure that bean (spring-boot-starter-
+    // webmvc alone doesn't pull in RestClientAutoConfiguration the way the
+    // classic spring-boot-starter-web does), and this adapter doesn't need
+    // any of the shared builder customization that DI would exist for.
+    private val restClient = RestClient.builder().baseUrl("https://texttospeech.googleapis.com/v1").build()
 
     // Google's voice catalog for a given language doesn't change within a
     // running process — worth caching so every single chat reply isn't a
@@ -42,19 +47,21 @@ class GoogleTextToSpeechAdapter(
 
     override fun synthesize(text: String, languageCode: String): TtsAudio {
         val voiceName = resolveVoice(languageCode)
-        val response = restClient.post()
-            .uri("/text:synthesize")
-            .header("X-Goog-Api-Key", properties.googleApiKey)
-            .contentType(MediaType.APPLICATION_JSON)
-            .body(
-                mapOf(
-                    "input" to mapOf("text" to text),
-                    "voice" to mapOf("languageCode" to languageCode, "name" to voiceName),
-                    "audioConfig" to mapOf("audioEncoding" to "MP3"),
-                ),
-            )
-            .retrieve()
-            .body(Map::class.java)
+        val response = runCatching {
+            restClient.post()
+                .uri("/text:synthesize")
+                .header("X-Goog-Api-Key", properties.googleApiKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(
+                    mapOf(
+                        "input" to mapOf("text" to text),
+                        "voice" to mapOf("languageCode" to languageCode, "name" to voiceName),
+                        "audioConfig" to mapOf("audioEncoding" to "MP3"),
+                    ),
+                )
+                .retrieve()
+                .body(Map::class.java)
+        }.getOrElse { throw wrapGoogleError(it) }
             ?: throw ApiException(HttpStatus.BAD_GATEWAY, "Google Text-to-Speech returned no audio")
 
         val audioContent = response["audioContent"] as? String
@@ -69,11 +76,13 @@ class GoogleTextToSpeechAdapter(
     private fun resolveVoice(languageCode: String): String {
         voiceCache[languageCode]?.let { return it }
 
-        val response = restClient.get()
-            .uri { it.path("/voices").queryParam("languageCode", languageCode).build() }
-            .header("X-Goog-Api-Key", properties.googleApiKey)
-            .retrieve()
-            .body(Map::class.java)
+        val response = runCatching {
+            restClient.get()
+                .uri { it.path("/voices").queryParam("languageCode", languageCode).build() }
+                .header("X-Goog-Api-Key", properties.googleApiKey)
+                .retrieve()
+                .body(Map::class.java)
+        }.getOrElse { throw wrapGoogleError(it) }
 
         @Suppress("UNCHECKED_CAST")
         val voices = response?.get("voices") as? List<Map<String, Any>> ?: emptyList()
@@ -89,5 +98,21 @@ class GoogleTextToSpeechAdapter(
         logger.info("Resolved {} to voice {}", languageCode, name)
         voiceCache[languageCode] = name
         return name
+    }
+
+    /** Surfaces Google's own error message (it's specific and actionable —
+     * "API key not valid", "API not enabled for this project", etc.)
+     * instead of letting an unhandled RestClientResponseException fall
+     * through to a generic 500 that hides what actually went wrong. */
+    private fun wrapGoogleError(ex: Throwable): ApiException {
+        if (ex !is RestClientResponseException) {
+            logger.error("Google Text-to-Speech call failed", ex)
+            return ApiException(HttpStatus.BAD_GATEWAY, "Couldn't reach Google Text-to-Speech")
+        }
+        logger.warn("Google Text-to-Speech rejected the request ({}): {}", ex.statusCode, ex.responseBodyAsString)
+        return ApiException(
+            HttpStatus.BAD_GATEWAY,
+            "Google Text-to-Speech rejected the request (${ex.statusCode.value()}): ${ex.responseBodyAsString}",
+        )
     }
 }
