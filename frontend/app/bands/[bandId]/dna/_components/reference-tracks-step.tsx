@@ -31,10 +31,12 @@ export function ReferenceTracksStep({
   onContinue,
 }: {
   bandId: string;
-  onContinue: (soundReferences: string[]) => void;
+  onContinue: (soundReferences: string[], preferredColor: string | null) => void;
 }) {
   const { accessToken } = useAuth();
   const [tracks, setTracks] = useState<TrackSlot[]>([]);
+  const [hasOwnColor, setHasOwnColor] = useState(false);
+  const [color, setColor] = useState("#1c4fa8");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const doneDescriptions = tracks
@@ -130,9 +132,43 @@ export function ReferenceTracksStep({
         />
       </div>
 
-      <div className="mt-8 flex items-center gap-3">
-        <Button type="button" variant="primary" disabled={analyzing} onClick={() => onContinue(doneDescriptions)}>
-          {doneDescriptions.length > 0 ? "Continue to the conversation" : "Skip — start the conversation"}
+      <div className="mt-8 border-t border-border pt-6">
+        <label className="flex items-center gap-2 text-sm text-ink">
+          <input
+            type="checkbox"
+            checked={hasOwnColor}
+            onChange={(event) => setHasOwnColor(event.target.checked)}
+            className="size-4 rounded border-border"
+          />
+          I already have a brand color
+        </label>
+        {hasOwnColor ? (
+          <div className="mt-3 flex items-center gap-3">
+            <input
+              type="color"
+              value={color}
+              onChange={(event) => setColor(event.target.value)}
+              aria-label="Your brand color"
+              className="h-10 w-14 cursor-pointer rounded border border-border bg-transparent p-0.5"
+            />
+            <span className="font-mono text-sm text-ink-muted">{color}</span>
+            <p className="text-xs text-ink-faint">Bandly keeps this exact color and picks a second one that fits.</p>
+          </div>
+        ) : (
+          <p className="mt-1 text-xs text-ink-faint">
+            No color yet? Bandly will choose a palette that fits your sound and identity.
+          </p>
+        )}
+      </div>
+
+      <div className="mt-6 flex items-center gap-3">
+        <Button
+          type="button"
+          variant="primary"
+          disabled={analyzing}
+          onClick={() => onContinue(doneDescriptions, hasOwnColor ? color : null)}
+        >
+          {doneDescriptions.length > 0 || hasOwnColor ? "Continue to the conversation" : "Skip — start the conversation"}
         </Button>
       </div>
     </div>

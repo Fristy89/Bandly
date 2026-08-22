@@ -60,6 +60,7 @@ export function IdentityChat({ bandId }: { bandId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("tracks");
   const [soundReferences, setSoundReferences] = useState<string[]>([]);
+  const [preferredColor, setPreferredColor] = useState<string | null>(null);
   const [assets, setAssets] = useState<GeneratedAssetResponse[] | null>(null);
   const [version, setVersion] = useState<ArtistDnaVersionResponse | null>(null);
   const [siteContent, setSiteContent] = useState<SiteContentData | null>(null);
@@ -243,6 +244,7 @@ export function IdentityChat({ bandId }: { bandId: string }) {
       const generatedVersion = await apiFetch<ArtistDnaVersionResponse>(`/api/v1/bands/${bandId}/dna/generate`, {
         method: "POST",
         token: accessToken,
+        body: JSON.stringify({ preferredPrimaryColor: preferredColor }),
       });
       const result = await apiFetch<GeneratedAssetResponse[]>(`/api/v1/bands/${bandId}/dna/current`, {
         token: accessToken,
@@ -272,8 +274,9 @@ export function IdentityChat({ bandId }: { bandId: string }) {
     return (
       <ReferenceTracksStep
         bandId={bandId}
-        onContinue={(references) => {
+        onContinue={(references, color) => {
           setSoundReferences(references);
+          setPreferredColor(color);
           setPhase("chatting");
         }}
       />

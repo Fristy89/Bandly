@@ -69,14 +69,19 @@ class ArtistDnaService(
      * tradeoff here, not an oversight — worth revisiting with a saga/outbox
      * step if this ever needs to be airtight.
      */
-    fun generateDna(bandId: UUID): ArtistDnaVersion {
+    fun generateDna(bandId: UUID, preferredPrimaryColor: String? = null): ArtistDnaVersion {
         val profile = identityProfiles.findByBandId(bandId)
             ?: throw ConflictException("Complete the Artist Identity Profile before generating Artist DNA")
+
+        // Validated here, not trusted from the request as-is — an artist
+        // typing "blue" instead of a hex code should fall through to
+        // AI-generated colors, not silently corrupt the palette.
+        val preferred = preferredPrimaryColor?.takeIf { HEX_COLOR.matches(it) }
 
         val output = generationJobs.runStructured(
             bandId = bandId,
             module = "artist-dna",
-            request = buildDnaPrompt(profile),
+            request = buildDnaPrompt(profile, preferred),
             responseType = ArtistDnaOutput::class.java,
             fallback = { stubOutput(profile) },
         )
@@ -85,7 +90,11 @@ class ArtistDnaService(
             ArtistDnaVersion(
                 bandId = bandId,
                 identityProfileId = profile.id,
-                primaryColor = sanitizeColor(output.primaryColor, DEFAULT_PRIMARY_COLOR),
+                // The artist's own color wins outright when they gave one —
+                // asking the model to "return it unchanged" is a request,
+                // not a guarantee, so this doesn't trust output.primaryColor
+                // to actually be it.
+                primaryColor = preferred ?: sanitizeColor(output.primaryColor, DEFAULT_PRIMARY_COLOR),
                 secondaryColor = sanitizeColor(output.secondaryColor, DEFAULT_SECONDARY_COLOR),
             ),
         )
@@ -170,7 +179,7 @@ class ArtistDnaService(
         }
     }
 
-    private fun buildDnaPrompt(profile: IdentityProfile) = GenerationRequest(
+    private fun buildDnaPrompt(profile: IdentityProfile, preferredPrimaryColor: String?) = GenerationRequest(
         systemPrompt = DNA_SYSTEM_PROMPT,
         userPrompt = """
             Here is the artist's Identity Profile:
@@ -180,17 +189,37 @@ class ArtistDnaService(
             paragraphs), a one-line elevator pitch, an "about the artist" press-kit
             paragraph, a tone-of-voice note (words/themes that fit this artist, and
             clichés or phrasing to avoid), and a two-color palette (primaryColor,
-            secondaryColor, both hex) reasoned from the same identity above —
-            especially their sound, personality, and the feeling they want people
-            to have. A metal band and a lounge singer should not land on the same
-            palette; avoid defaulting to generic "AI-chosen" colors (the usual
-            purple-blue gradients or safe pastel blues) when the identity actually
-            points somewhere more specific.
+            secondaryColor, both hex).
+
+            ${colorInstruction(preferredPrimaryColor)}
 
             Write every text field in ${SupportedLanguages.nameFor(profile.language)} —
             that's the language the artist answered these questions in.
         """.trimIndent(),
     )
+
+    private fun colorInstruction(preferredPrimaryColor: String?): String =
+        if (preferredPrimaryColor != null) {
+            """
+                The artist already has a brand color they want to keep: $preferredPrimaryColor.
+                Return that exact value as primaryColor — do not adjust, "improve", or
+                reinterpret it, even if you would have picked something else yourself.
+                Reason a secondaryColor that pairs well with it AND still reflects their
+                sound, personality, and the feeling they want people to have — not
+                color-wheel complementary theory in the abstract, but a color that would
+                actually look right alongside $preferredPrimaryColor on this specific
+                artist's cover art.
+            """.trimIndent()
+        } else {
+            """
+                No existing brand color — reason a full two-color palette from the
+                identity above, especially their sound, personality, and the feeling
+                they want people to have. A metal band and a lounge singer should not
+                land on the same palette; avoid defaulting to generic "AI-chosen" colors
+                (the usual purple-blue gradients or safe pastel blues) when the identity
+                actually points somewhere more specific.
+            """.trimIndent()
+        }
 
     /** Resolves raw answer keys back to their full question text (see
      * IdentityQuestions) so the model reads "Why does your music need to
@@ -210,7 +239,7 @@ class ArtistDnaService(
      * database/renderer — the same defensive pattern LogoService uses for
      * its own color field. */
     private fun sanitizeColor(color: String, fallback: String): String =
-        if (Regex("^#[0-9a-fA-F]{6}$").matches(color)) color else fallback
+        if (HEX_COLOR.matches(color)) color else fallback
 
     /** Used when bandly.ai.enabled=false, or if a real call fails — always
      * clearly labeled so nobody mistakes it for the model's actual voice. */
@@ -238,5 +267,6 @@ class ArtistDnaService(
 
         private const val DEFAULT_PRIMARY_COLOR = "#1c4fa8"
         private const val DEFAULT_SECONDARY_COLOR = "#ac7423"
+        private val HEX_COLOR = Regex("^#[0-9a-fA-F]{6}$")
     }
 }

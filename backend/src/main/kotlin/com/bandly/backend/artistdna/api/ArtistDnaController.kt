@@ -45,9 +45,12 @@ class ArtistDnaController(
      * generated document in the band sounds like, not a casual action. */
     @PostMapping("/generate")
     @ResponseStatus(HttpStatus.CREATED)
-    fun generate(@PathVariable bandId: UUID): ArtistDnaVersionResponse {
+    fun generate(
+        @PathVariable bandId: UUID,
+        @RequestBody(required = false) request: GenerateDnaRequest?,
+    ): ArtistDnaVersionResponse {
         bandService.requireRole(bandId, requireAuthenticatedUser(), BandRole.OWNER, BandRole.ADMIN)
-        val version = artistDnaService.generateDna(bandId)
+        val version = artistDnaService.generateDna(bandId, request?.preferredPrimaryColor)
         return toResponse(version)
     }
 

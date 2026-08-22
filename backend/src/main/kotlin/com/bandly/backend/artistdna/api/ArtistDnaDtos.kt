@@ -19,6 +19,14 @@ data class IdentityProfileResponse(
     val updatedAt: Instant,
 )
 
+data class GenerateDnaRequest(
+    /** The artist's own existing brand color, if they have one — hex,
+     * validated/re-checked server-side (see ArtistDnaService.generateDna).
+     * Null means "let Bandly choose", the previous and still-default
+     * behavior. */
+    val preferredPrimaryColor: String? = null,
+)
+
 data class ArtistDnaVersionResponse(
     val id: UUID,
     val status: DnaStatus,
