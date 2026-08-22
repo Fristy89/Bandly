@@ -9,6 +9,7 @@ import com.bandly.backend.platform.security.currentUserId
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -60,6 +61,27 @@ class ArtistDnaController(
         return artistDnaService.currentDna(bandId).map {
             GeneratedAssetResponse(it.id, it.assetType, it.content, it.status)
         }
+    }
+
+    /** Rewrites just this one field — membership is enough here (unlike
+     * /generate's OWNER/ADMIN gate): regenerating a single line is a much
+     * lower-stakes action than recompiling the whole DNA. */
+    @PostMapping("/assets/{assetId}/regenerate")
+    fun regenerateAsset(@PathVariable bandId: UUID, @PathVariable assetId: UUID): GeneratedAssetResponse {
+        bandService.requireMembership(bandId, requireAuthenticatedUser())
+        val asset = artistDnaService.regenerateAsset(bandId, assetId)
+        return GeneratedAssetResponse(asset.id, asset.assetType, asset.content, asset.status)
+    }
+
+    @PatchMapping("/assets/{assetId}")
+    fun editAsset(
+        @PathVariable bandId: UUID,
+        @PathVariable assetId: UUID,
+        @Valid @RequestBody request: EditAssetRequest,
+    ): GeneratedAssetResponse {
+        bandService.requireMembership(bandId, requireAuthenticatedUser())
+        val asset = artistDnaService.editAsset(bandId, assetId, request.content)
+        return GeneratedAssetResponse(asset.id, asset.assetType, asset.content, asset.status)
     }
 
     /** The version marker itself (status + palette) — separate from

@@ -1,6 +1,7 @@
 package com.bandly.backend.artistdna.application
 
 import com.bandly.backend.artistdna.domain.ArtistDnaVersion
+import com.bandly.backend.artistdna.domain.AssetStatus
 import com.bandly.backend.artistdna.domain.AssetType
 import com.bandly.backend.artistdna.domain.GeneratedAsset
 import com.bandly.backend.artistdna.domain.IdentityProfile
@@ -139,6 +140,43 @@ class ArtistDnaService(
         return ArtistDnaColors(primary, secondary)
     }
 
+    /**
+     * Regenerates ONE field in place — the "next level" the whole-DNA
+     * regenerate doesn't give you: if four of five texts are already right,
+     * this rewrites just the fifth instead of forcing a full reroll. Blocking
+     * (via GenerationJobService.runText), same reasoning as generateDna:
+     * this is a deliberate action the artist waits on, not a hot path.
+     */
+    fun regenerateAsset(bandId: UUID, assetId: UUID): GeneratedAsset {
+        val asset = generatedAssets.findByIdAndBandId(assetId, bandId)
+            ?: throw NotFoundException("Generated asset $assetId not found for this band")
+        val profile = identityProfiles.findByBandId(bandId)
+            ?: throw ConflictException("No Identity Profile to regenerate from")
+
+        val fresh = generationJobs.runText(
+            bandId = bandId,
+            module = "artist-dna",
+            request = buildFieldPrompt(profile, asset.assetType, asset.content),
+        )
+        // A regenerated field is a fresh AI attempt, not the artist's own
+        // words — status resets to DRAFT even if the previous text had been
+        // manually EDITED, since that edit no longer describes what's here.
+        asset.content = fresh.trim().trim('"')
+        asset.status = AssetStatus.DRAFT
+        return generatedAssets.save(asset)
+    }
+
+    /** The artist's own rewrite, verbatim — status moves to EDITED so a
+     * later whole-DNA regenerate or field regenerate doesn't quietly
+     * overwrite something they deliberately chose to hand-tune. */
+    fun editAsset(bandId: UUID, assetId: UUID, content: String): GeneratedAsset {
+        val asset = generatedAssets.findByIdAndBandId(assetId, bandId)
+            ?: throw NotFoundException("Generated asset $assetId not found for this band")
+        asset.content = content
+        asset.status = AssetStatus.EDITED
+        return generatedAssets.save(asset)
+    }
+
     /** Streams a fresh elevator pitch line — the SSE path from blueprint §12,
      * kept here rather than in a new module so there's a real, working
      * example of both AiGenerationPort call shapes in one place. */
@@ -220,6 +258,40 @@ class ArtistDnaService(
                 actually points somewhere more specific.
             """.trimIndent()
         }
+
+    private fun buildFieldPrompt(profile: IdentityProfile, assetType: AssetType, previous: String) = GenerationRequest(
+        systemPrompt = DNA_SYSTEM_PROMPT,
+        userPrompt = """
+            Here is the artist's Identity Profile:
+            ${formatAnswers(profile.answers)}
+
+            Their current ${fieldLabel(assetType)} reads:
+            "$previous"
+
+            Write ONE new ${fieldLabel(assetType)}${fieldSpec(assetType)} — grounded in
+            the same identity above, genuinely different in angle or phrasing from the
+            current version, not just a synonym swap. Return only the text itself:
+            no surrounding quotes, no label, no explanation before or after it.
+
+            Write it in ${SupportedLanguages.nameFor(profile.language)}.
+        """.trimIndent(),
+    )
+
+    private fun fieldLabel(type: AssetType): String = when (type) {
+        AssetType.SHORT_BIO -> "short bio"
+        AssetType.LONG_BIO -> "long bio"
+        AssetType.ELEVATOR_PITCH -> "elevator pitch"
+        AssetType.ABOUT_THE_ARTIST -> "about-the-artist press-kit paragraph"
+        AssetType.TONE_OF_VOICE -> "tone-of-voice note"
+    }
+
+    private fun fieldSpec(type: AssetType): String = when (type) {
+        AssetType.SHORT_BIO -> " (2-3 sentences)"
+        AssetType.LONG_BIO -> " (2-3 paragraphs)"
+        AssetType.ELEVATOR_PITCH -> " (a single sentence)"
+        AssetType.ABOUT_THE_ARTIST -> ""
+        AssetType.TONE_OF_VOICE -> " (words/themes that fit this artist, and clichés or phrasing to avoid)"
+    }
 
     /** Resolves raw answer keys back to their full question text (see
      * IdentityQuestions) so the model reads "Why does your music need to

@@ -42,6 +42,10 @@ data class GeneratedAssetResponse(
     val status: AssetStatus,
 )
 
+data class EditAssetRequest(
+    @field:NotEmpty val content: String,
+)
+
 data class GenerationJobResponse(
     val jobId: UUID,
 )

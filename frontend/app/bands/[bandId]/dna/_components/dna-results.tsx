@@ -1,9 +1,11 @@
+"use client";
+
 import Link from "next/link";
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import type { ArtistDnaVersionResponse, AssetType, GeneratedAssetResponse, LogoMark } from "@/shared/api/types";
-import { Card } from "@/shared/ui/card";
 import { ButtonLink } from "@/shared/ui/button";
 import { SignatureMark } from "@/shared/ui/signature-mark";
+import { AssetCard } from "./asset-card";
 
 const ASSET_LABELS: Record<AssetType, string> = {
   SHORT_BIO: "Short bio",
@@ -33,7 +35,7 @@ function riseInDelay(step: number): CSSProperties {
 export function DnaResults({
   bandId,
   bandName,
-  assets,
+  assets: initialAssets,
   version,
   logoMark,
 }: {
@@ -43,32 +45,38 @@ export function DnaResults({
   version: ArtistDnaVersionResponse | null;
   logoMark: LogoMark | null;
 }) {
+  const [assets, setAssets] = useState(initialAssets);
   const byType = new Map(assets.map((asset) => [asset.assetType, asset]));
 
+  function handleUpdated(updated: GeneratedAssetResponse) {
+    setAssets((current) => current.map((a) => (a.id === updated.id ? updated : a)));
+  }
+
   return (
-    <div className="mx-auto max-w-2xl px-6 py-10">
+    <div className="mx-auto max-w-3xl px-6 py-16">
       <header
-        className="mb-8 motion-safe:animate-[rise-in_0.6s_cubic-bezier(0.2,0.8,0.2,1)]"
+        className="mb-12 text-center motion-safe:animate-[rise-in_0.6s_cubic-bezier(0.2,0.8,0.2,1)]"
         style={riseInDelay(0)}
       >
-        <p className="text-xs font-medium uppercase tracking-[0.14em] text-good">Your Artist DNA is ready</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-good">Your Artist DNA is ready</p>
         {bandName ? (
           <SignatureMark
             name={bandName}
             logoMark={logoMark}
-            className="mt-2 block text-5xl leading-tight sm:text-6xl"
+            className="mt-4 block text-6xl leading-tight sm:text-7xl"
           />
         ) : (
-          <h1 className="mt-2 font-display text-display-md text-ink">Your Artist DNA</h1>
+          <h1 className="mt-4 font-display text-display-lg text-ink">Your Artist DNA</h1>
         )}
-        <p className="mt-3 text-sm text-ink-muted">
-          Compiled from your conversation with Bandly. Nothing here is published yet — read it over first.
+        <p className="mx-auto mt-4 max-w-md text-[15px] leading-relaxed text-ink-muted">
+          Compiled from your conversation with Bandly. Nothing here is published yet — read it over, rewrite
+          anything that isn&apos;t quite you.
         </p>
       </header>
 
       {version?.primaryColor ? (
-        <Card
-          className="mb-6 flex items-center gap-4 p-4 motion-safe:animate-[rise-in_0.5s_cubic-bezier(0.2,0.8,0.2,1)]"
+        <div
+          className="mb-6 flex items-center gap-4 rounded-[28px] bg-surface/70 p-6 shadow-[0_1px_2px_rgba(36,32,26,0.04),0_16px_40px_-24px_rgba(36,32,26,0.18)] backdrop-blur-xl motion-safe:animate-[rise-in_0.5s_cubic-bezier(0.2,0.8,0.2,1)]"
           style={riseInDelay(1)}
         >
           <div
@@ -77,12 +85,12 @@ export function DnaResults({
             aria-label={`Brand colors: primary ${version.primaryColor}, secondary ${version.secondaryColor}`}
           >
             <span
-              className="size-10 rounded-full border border-border shadow-sm"
+              className="size-11 rounded-full shadow-[0_2px_8px_-2px_rgba(36,32,26,0.3)]"
               style={{ background: version.primaryColor }}
             />
             {version.secondaryColor ? (
               <span
-                className="size-10 rounded-full border border-border shadow-sm"
+                className="size-11 rounded-full shadow-[0_2px_8px_-2px_rgba(36,32,26,0.3)]"
                 style={{ background: version.secondaryColor }}
               />
             ) : null}
@@ -92,44 +100,44 @@ export function DnaResults({
               {version.primaryColor}
               {version.secondaryColor ? ` · ${version.secondaryColor}` : ""}
             </p>
-            <p>Now used for your signature and site accent color.</p>
+            <p className="mt-0.5">Now used for your signature and site accent color.</p>
           </div>
-        </Card>
+        </div>
       ) : null}
 
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-5">
         {ASSET_ORDER.map((type, index) => {
           const asset = byType.get(type);
           if (!asset) return null;
           return (
-            <Card
-              key={type}
-              className="p-5 motion-safe:animate-[rise-in_0.5s_cubic-bezier(0.2,0.8,0.2,1)]"
+            <AssetCard
+              key={asset.id}
+              bandId={bandId}
+              label={ASSET_LABELS[type]}
+              asset={asset}
               style={riseInDelay(2 + index)}
-            >
-              <h2 className="text-xs font-medium uppercase tracking-[0.1em] text-ink-faint">
-                {ASSET_LABELS[type]}
-              </h2>
-              <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-ink">{asset.content}</p>
-            </Card>
+              onUpdated={handleUpdated}
+            />
           );
         })}
       </div>
 
-      <div className="mt-8 flex items-center gap-3">
-        <ButtonLink href={`/bands/${bandId}/focus`} variant="primary">
-          Back to Focus
-        </ButtonLink>
-        <ButtonLink href={`/bands/${bandId}/dna`} variant="secondary">
-          Talk to Bandly again
-        </ButtonLink>
+      <div className="mt-12 flex flex-col items-center gap-4">
+        <div className="flex items-center gap-3">
+          <ButtonLink href={`/bands/${bandId}/focus`} variant="primary">
+            Back to Focus
+          </ButtonLink>
+          <ButtonLink href={`/bands/${bandId}/dna`} variant="secondary">
+            Talk to Bandly again
+          </ButtonLink>
+        </div>
+        <p className="text-xs text-ink-faint">
+          <Link href={`/bands/${bandId}/dna`} className="underline decoration-border underline-offset-4">
+            Starting a new conversation
+          </Link>{" "}
+          will compile a fresh DNA version when you finish it.
+        </p>
       </div>
-      <p className="mt-3 text-xs text-ink-faint">
-        <Link href={`/bands/${bandId}/dna`} className="underline decoration-border underline-offset-4">
-          Starting a new conversation
-        </Link>{" "}
-        will compile a fresh DNA version when you finish it.
-      </p>
     </div>
   );
 }

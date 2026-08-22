@@ -120,6 +120,36 @@ class GenerationJobService(
     fun events(jobId: UUID): Flux<String> =
         streams.events(jobId) ?: throw NotFoundException("No active generation stream for job $jobId")
 
+    /** Same blocking-call shape and job bookkeeping as [runStructured], for
+     * the plain-text case (regenerating a single Artist DNA field, see
+     * ArtistDnaService.regenerateAsset) — no fallback, same reasoning as
+     * [runChat]: a failed regeneration should surface as an error to retry,
+     * not silently overwrite the artist's existing text with a stub. */
+    fun runText(bandId: UUID, module: String, request: GenerationRequest): String {
+        val job = jobs.save(
+            GenerationJob(
+                bandId = bandId,
+                module = module,
+                status = GenerationStatus.RUNNING,
+                promptPayload = mapOf("system" to request.systemPrompt, "user" to request.userPrompt),
+            ),
+        )
+        return try {
+            val result = ai.generateText(request)
+            job.status = GenerationStatus.DONE
+            job.responsePayload = mapOf("content" to result)
+            job.completedAt = Instant.now()
+            jobs.save(job)
+            result
+        } catch (ex: Exception) {
+            job.status = GenerationStatus.FAILED
+            job.error = ex.message
+            job.completedAt = Instant.now()
+            jobs.save(job)
+            throw ex
+        }
+    }
+
     /** One turn of a conversation (IdentityChatService) — same blocking-call
      * shape and job bookkeeping as [runStructured], just no fallback: a
      * failed chat reply should surface as an error to retry, not silently

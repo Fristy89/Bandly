@@ -224,6 +224,28 @@ export function IconMusicNote(props: IconProps) {
   );
 }
 
+/** Regenerate — a single circling arrow, not a full double-loop refresh
+ * glyph, to stay quiet enough to sit inside a card's corner. */
+export function IconRefresh(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M5 12a7 7 0 0 1 11.5-5.3M19 12a7 7 0 0 1-11.5 5.3" />
+      <path d="M16.5 5.5v3.2h-3.2" />
+      <path d="M7.5 18.5v-3.2h3.2" />
+    </svg>
+  );
+}
+
+/** Edit — a nib mid-stroke. */
+export function IconPencil(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M15 4.5 19.5 9 8 20.5H3.5V16Z" strokeLinejoin="round" />
+      <path d="M13 6.5 17.5 11" />
+    </svg>
+  );
+}
+
 export function IconSpeakerMuted(props: IconProps) {
   return (
     <svg {...base} {...props}>
