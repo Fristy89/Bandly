@@ -7,6 +7,7 @@ import org.springframework.ai.chat.messages.Message
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.content.Media
+import org.springframework.ai.converter.BeanOutputConverter
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.core.io.ByteArrayResource
 import org.springframework.stereotype.Component
@@ -36,22 +37,31 @@ class SpringAiGenerationAdapter(chatClientBuilder: ChatClient.Builder) : AiGener
     private val logger = LoggerFactory.getLogger(SpringAiGenerationAdapter::class.java)
     private val chatClient = chatClientBuilder.build()
 
-    override fun generateText(request: GenerationRequest): String =
-        chatClient.prompt()
-            .system(request.systemPrompt)
-            .user(request.userPrompt)
-            .call()
-            .content()
-            ?: ""
+    // Not .call().content()/.call().entity() (both read only the first
+    // Generation) — see chat()'s comment below for the full story. Discovered
+    // via generateStructured: ArtistDnaOutput regularly came back as a
+    // Jackson "No content to map due to end-of-input" error and a silent
+    // fallback to stub output, even though a raw call to the same model with
+    // the same prompt succeeded outside the app every time. The model
+    // sometimes returns more than one Generation in ChatResponse.results
+    // (an empty leading one, the real content in a later one); every call
+    // shape here now joins all of them instead of trusting there's exactly
+    // one, the same fix chat() already had.
+    override fun generateText(request: GenerationRequest): String {
+        val response = chatClient.prompt().system(request.systemPrompt).user(request.userPrompt).call().chatResponse()
+        return response?.results.orEmpty().joinToString("") { it.output.text.orEmpty() }
+    }
 
     override fun <T : Any> generateStructured(request: GenerationRequest, responseType: Class<T>, fallback: () -> T): T =
         try {
-            chatClient.prompt()
+            val converter = BeanOutputConverter(responseType)
+            val response = chatClient.prompt()
                 .system(request.systemPrompt)
-                .user(request.userPrompt)
+                .user("${request.userPrompt}\n\n${converter.format}")
                 .call()
-                .entity(responseType)
-                ?: fallback()
+                .chatResponse()
+            val text = response?.results.orEmpty().joinToString("") { it.output.text.orEmpty() }
+            if (text.isBlank()) fallback() else converter.convert(text)
         } catch (ex: Exception) {
             // A bad/missing key, a network hiccup, a response that didn't parse into
             // responseType — all land here. We log and degrade rather than 500 the
