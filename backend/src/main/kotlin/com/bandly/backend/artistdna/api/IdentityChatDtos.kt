@@ -16,6 +16,18 @@ data class ChatRequest(
     /** ISO 639-1 — "nl" | "de" | "en". Unrecognized values fall back to
      * English in the service layer rather than rejecting the request. */
     val language: String = "en",
+    /** Gemini's own descriptions of reference tracks the artist uploaded
+     * before this conversation started (see analyzeTrack below) — plain
+     * text, already generated, just carried along on every turn the same
+     * stateless way history/language are. */
+    val soundReferences: List<String> = emptyList(),
 )
 
 data class ChatReplyResponse(val reply: String)
+
+data class AnalyzeTrackRequest(
+    @field:NotBlank val audioBase64: String,
+    @field:NotBlank val mimeType: String,
+)
+
+data class AnalyzeTrackResponse(val description: String)

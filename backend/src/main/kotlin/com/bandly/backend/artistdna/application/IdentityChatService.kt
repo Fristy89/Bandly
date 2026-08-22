@@ -24,12 +24,28 @@ class IdentityChatService(
     private val artistDnaService: ArtistDnaService,
 ) {
 
-    fun reply(bandId: UUID, history: List<ChatTurn>, language: String): String {
+    fun reply(bandId: UUID, history: List<ChatTurn>, language: String, soundReferences: List<String> = emptyList()): String {
         val resolvedLanguage = if (SupportedLanguages.isSupported(language)) language.lowercase() else "en"
         val prompt = "$BANDLY_SYSTEM_PROMPT\n\nConduct this whole conversation in " +
             "${SupportedLanguages.nameFor(resolvedLanguage)} — the artist chose that language, so your " +
-            "replies (and your reading of their answers) should be in it too."
+            "replies (and your reading of their answers) should be in it too." +
+            soundReferenceContext(soundReferences)
         return generationJobs.runChat(bandId, "identity-chat", prompt, history)
+    }
+
+    /** Gemini's own description of each track the artist uploaded before
+     * this conversation started (see IdentityChatController.analyzeTrack)
+     * — real signal for Sound and Differentiation, not something Bandly
+     * has to ask about from a blank slate. */
+    private fun soundReferenceContext(soundReferences: List<String>): String {
+        if (soundReferences.isEmpty()) return ""
+        val descriptions = soundReferences.mapIndexed { i, d -> "Track ${i + 1}: $d" }.joinToString("\n\n")
+        return "\n\nBefore this conversation started, the artist shared reference tracks so you'd already " +
+            "have a real sense of their sound. Here's what those tracks actually sound like:\n\n$descriptions\n\n" +
+            "Treat this as genuine signal for the Sound and Differentiation dimensions — you don't need to ask " +
+            "\"what does your music sound like\" from scratch. Instead, reflect what you're hearing back to them " +
+            "naturally (in your own words, don't just repeat this description verbatim) and ask what's most " +
+            "essentially THEIRS about it versus other artists who sound similar."
     }
 
     /** Turns the conversation into a saved Identity Profile — the same

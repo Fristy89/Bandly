@@ -213,6 +213,17 @@ export function IconCamera(props: IconProps) {
   );
 }
 
+/** Reference track — a single note, not a literal waveform. */
+export function IconMusicNote(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M9.5 17.5V6.5L18 4.5v11" />
+      <circle cx="7.25" cy="17.5" r="2.25" />
+      <circle cx="15.75" cy="15.5" r="2.25" />
+    </svg>
+  );
+}
+
 export function IconSpeakerMuted(props: IconProps) {
   return (
     <svg {...base} {...props}>

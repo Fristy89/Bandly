@@ -28,6 +28,7 @@ import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { IconCamera, IconMicrophone, IconSpeaker, IconSpeakerMuted } from "@/shared/ui/icons";
 import { DnaResults } from "./dna-results";
+import { ReferenceTracksStep } from "./reference-tracks-step";
 
 const OPENING_MESSAGES: Record<LanguageCode, string> = {
   en: "Hi — I'm Bandly. I want to get to know you as an artist so everything I help you write actually sounds like you, not generic. No wrong answers here. What made you start making music?",
@@ -37,7 +38,7 @@ const OPENING_MESSAGES: Record<LanguageCode, string> = {
 
 const MIN_TURNS_BEFORE_FINISH = 3;
 
-type Phase = "chatting" | "summarizing" | "generating" | "signature" | "done";
+type Phase = "tracks" | "chatting" | "summarizing" | "generating" | "signature" | "done";
 
 /**
  * The conversational alternative to a static form (IdentityQuestions is
@@ -57,7 +58,8 @@ export function IdentityChat({ bandId }: { bandId: string }) {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [phase, setPhase] = useState<Phase>("chatting");
+  const [phase, setPhase] = useState<Phase>("tracks");
+  const [soundReferences, setSoundReferences] = useState<string[]>([]);
   const [assets, setAssets] = useState<GeneratedAssetResponse[] | null>(null);
   const [version, setVersion] = useState<ArtistDnaVersionResponse | null>(null);
   const [siteContent, setSiteContent] = useState<SiteContentData | null>(null);
@@ -152,7 +154,7 @@ export function IdentityChat({ bandId }: { bandId: string }) {
       const response = await apiFetch<ChatReplyResponse>(`/api/v1/bands/${bandId}/dna/chat`, {
         method: "POST",
         token: accessToken,
-        body: JSON.stringify({ history: nextMessages, language }),
+        body: JSON.stringify({ history: nextMessages, language, soundReferences }),
       });
       setMessages((current) => [...current, { role: "assistant", content: response.reply }]);
       if (speakReplies && ttsSupported) {
@@ -264,6 +266,18 @@ export function IdentityChat({ bandId }: { bandId: string }) {
       setError(err instanceof ApiError ? err.message : "Couldn't build your DNA from this conversation — try again.");
       setPhase("chatting");
     }
+  }
+
+  if (phase === "tracks") {
+    return (
+      <ReferenceTracksStep
+        bandId={bandId}
+        onContinue={(references) => {
+          setSoundReferences(references);
+          setPhase("chatting");
+        }}
+      />
+    );
   }
 
   if (phase === "done" && assets) {

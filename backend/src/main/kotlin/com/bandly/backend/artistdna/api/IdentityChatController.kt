@@ -6,6 +6,7 @@ import com.bandly.backend.platform.ai.ChatTurn
 import com.bandly.backend.platform.error.ApiException
 import com.bandly.backend.platform.error.UnauthorizedException
 import com.bandly.backend.platform.security.currentUserId
+import com.bandly.backend.platform.speech.AudioUnderstandingPort
 import com.bandly.backend.artistdna.application.ChatModeration
 import com.bandly.backend.artistdna.application.IdentityChatService
 import jakarta.validation.Valid
@@ -23,14 +24,41 @@ import java.util.UUID
 class IdentityChatController(
     private val identityChatService: IdentityChatService,
     private val bandService: BandService,
+    private val audioUnderstanding: AudioUnderstandingPort,
 ) {
 
     @PostMapping
     fun reply(@PathVariable bandId: UUID, @Valid @RequestBody request: ChatRequest): ChatReplyResponse {
         bandService.requireMembership(bandId, requireAuthenticatedUser())
         validateNotAbusive(request.history.lastOrNull())
-        val reply = identityChatService.reply(bandId, toTurns(request.history), request.language)
+        val reply = identityChatService.reply(bandId, toTurns(request.history), request.language, request.soundReferences)
         return ChatReplyResponse(reply)
+    }
+
+    /** Before the conversation starts, not a chat turn itself — the
+     * artist uploads up to a few reference tracks and Gemini's read on
+     * each becomes part of request.soundReferences on every /chat and
+     * /chat/summarize call from then on (see ChatRequest). */
+    @PostMapping("/analyze-track")
+    fun analyzeTrack(@PathVariable bandId: UUID, @Valid @RequestBody request: AnalyzeTrackRequest): AnalyzeTrackResponse {
+        bandService.requireMembership(bandId, requireAuthenticatedUser())
+        validateAudio(request.audioBase64, request.mimeType)
+        val description = audioUnderstanding.describeSound(Base64.getDecoder().decode(request.audioBase64), request.mimeType)
+        return AnalyzeTrackResponse(description)
+    }
+
+    private fun validateAudio(base64: String, mimeType: String?) {
+        if (mimeType !in ALLOWED_AUDIO_TYPES) {
+            throw ApiException(HttpStatus.BAD_REQUEST, "Unsupported audio type: $mimeType")
+        }
+        val decodedSize = try {
+            Base64.getDecoder().decode(base64).size
+        } catch (ex: IllegalArgumentException) {
+            throw ApiException(HttpStatus.BAD_REQUEST, "Audio data isn't valid base64")
+        }
+        if (decodedSize > MAX_AUDIO_BYTES) {
+            throw ApiException(HttpStatus.BAD_REQUEST, "That track is too large — please use one under 15 MB")
+        }
     }
 
     /** Only the newest turn — everything earlier in the history already
@@ -83,5 +111,7 @@ class IdentityChatController(
     companion object {
         private val ALLOWED_IMAGE_TYPES = setOf("image/jpeg", "image/png", "image/webp")
         private const val MAX_IMAGE_BYTES = 5 * 1024 * 1024
+        private val ALLOWED_AUDIO_TYPES = setOf("audio/mpeg", "audio/wav", "audio/x-wav", "audio/mp4", "audio/x-m4a")
+        private const val MAX_AUDIO_BYTES = 15 * 1024 * 1024
     }
 }
