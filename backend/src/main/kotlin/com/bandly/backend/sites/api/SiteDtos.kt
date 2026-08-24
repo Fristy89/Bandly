@@ -22,6 +22,15 @@ data class UploadLogoRequest(
     @field:NotBlank val mimeType: String,
 )
 
+data class UploadLogoResponse(
+    val content: SiteContentData,
+    /** Claude's read of the logo's visual mood (LogoService.describeUploadedLogo)
+     * — the frontend carries this into every /dna/chat call afterward as
+     * ChatRequest.visualReference, so Bandly can compare it against the
+     * sound/personality that emerges in conversation. */
+    val visualDescription: String,
+)
+
 data class PublicSiteResponse(
     val subdomain: String,
     val content: SiteContentData,

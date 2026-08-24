@@ -21,7 +21,7 @@ type TrackSlot = {
 type LogoUploadState =
   | { status: "idle" }
   | { status: "uploading" }
-  | { status: "done"; dataUrl: string }
+  | { status: "done"; dataUrl: string; visualDescription: string }
   | { status: "error"; message: string };
 
 const ALLOWED_LOGO_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/svg+xml"]);
@@ -40,7 +40,12 @@ export function ReferenceTracksStep({
   onContinue,
 }: {
   bandId: string;
-  onContinue: (soundReferences: string[], preferredColor: string | null, hasOwnLogo: boolean) => void;
+  onContinue: (
+    soundReferences: string[],
+    preferredColor: string | null,
+    hasOwnLogo: boolean,
+    logoVisualReference: string | null,
+  ) => void;
 }) {
   const { accessToken } = useAuth();
   const [tracks, setTracks] = useState<TrackSlot[]>([]);
@@ -109,12 +114,12 @@ export function ReferenceTracksStep({
         reader.readAsDataURL(file);
       });
       const base64 = dataUrl.split(",")[1] ?? "";
-      await apiFetch(`/api/v1/bands/${bandId}/site/logo/upload`, {
+      const response = await apiFetch<{ visualDescription: string }>(`/api/v1/bands/${bandId}/site/logo/upload`, {
         method: "POST",
         token: accessToken,
         body: JSON.stringify({ imageBase64: base64, mimeType: file.type }),
       });
-      setLogoUpload({ status: "done", dataUrl });
+      setLogoUpload({ status: "done", dataUrl, visualDescription: response.visualDescription });
     } catch (err) {
       const message =
         err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Couldn't upload that logo.";
@@ -267,7 +272,14 @@ export function ReferenceTracksStep({
           type="button"
           variant="primary"
           disabled={analyzing || logoUpload.status === "uploading"}
-          onClick={() => onContinue(doneDescriptions, hasOwnColor ? color : null, logoUpload.status === "done")}
+          onClick={() =>
+            onContinue(
+              doneDescriptions,
+              hasOwnColor ? color : null,
+              logoUpload.status === "done",
+              logoUpload.status === "done" ? logoUpload.visualDescription || null : null,
+            )
+          }
         >
           {doneDescriptions.length > 0 || hasOwnColor || logoUpload.status === "done"
             ? "Continue to the conversation"

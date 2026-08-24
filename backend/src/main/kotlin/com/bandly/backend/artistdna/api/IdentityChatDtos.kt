@@ -21,6 +21,10 @@ data class ChatRequest(
      * text, already generated, just carried along on every turn the same
      * stateless way history/language are. */
     val soundReferences: List<String> = emptyList(),
+    /** Claude's own read of the artist's uploaded logo's visual mood (see
+     * LogoService.describeUploadedLogo) — null when they don't have one or
+     * uploaded an SVG (vision doesn't support that format). */
+    val visualReference: String? = null,
 )
 
 data class ChatReplyResponse(val reply: String)

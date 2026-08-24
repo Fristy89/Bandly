@@ -62,6 +62,7 @@ export function IdentityChat({ bandId }: { bandId: string }) {
   const [soundReferences, setSoundReferences] = useState<string[]>([]);
   const [preferredColor, setPreferredColor] = useState<string | null>(null);
   const [hasOwnLogo, setHasOwnLogo] = useState(false);
+  const [visualReference, setVisualReference] = useState<string | null>(null);
   const [assets, setAssets] = useState<GeneratedAssetResponse[] | null>(null);
   const [version, setVersion] = useState<ArtistDnaVersionResponse | null>(null);
   const [siteContent, setSiteContent] = useState<SiteContentData | null>(null);
@@ -156,7 +157,7 @@ export function IdentityChat({ bandId }: { bandId: string }) {
       const response = await apiFetch<ChatReplyResponse>(`/api/v1/bands/${bandId}/dna/chat`, {
         method: "POST",
         token: accessToken,
-        body: JSON.stringify({ history: nextMessages, language, soundReferences }),
+        body: JSON.stringify({ history: nextMessages, language, soundReferences, visualReference }),
       });
       setMessages((current) => [...current, { role: "assistant", content: response.reply }]);
       if (speakReplies && ttsSupported) {
@@ -281,10 +282,11 @@ export function IdentityChat({ bandId }: { bandId: string }) {
     return (
       <ReferenceTracksStep
         bandId={bandId}
-        onContinue={(references, color, ownLogo) => {
+        onContinue={(references, color, ownLogo, logoFeel) => {
           setSoundReferences(references);
           setPreferredColor(color);
           setHasOwnLogo(ownLogo);
+          setVisualReference(logoFeel);
           setPhase("chatting");
         }}
       />

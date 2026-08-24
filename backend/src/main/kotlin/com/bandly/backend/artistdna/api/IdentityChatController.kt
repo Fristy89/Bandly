@@ -31,7 +31,13 @@ class IdentityChatController(
     fun reply(@PathVariable bandId: UUID, @Valid @RequestBody request: ChatRequest): ChatReplyResponse {
         bandService.requireMembership(bandId, requireAuthenticatedUser())
         validateNotAbusive(request.history.lastOrNull())
-        val reply = identityChatService.reply(bandId, toTurns(request.history), request.language, request.soundReferences)
+        val reply = identityChatService.reply(
+            bandId,
+            toTurns(request.history),
+            request.language,
+            request.soundReferences,
+            request.visualReference,
+        )
         return ChatReplyResponse(reply)
     }
 

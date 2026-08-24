@@ -2,6 +2,8 @@ package com.bandly.backend.sites.application
 
 import com.bandly.backend.artistdna.application.ArtistDnaColors
 import com.bandly.backend.artistdna.application.ArtistDnaService
+import com.bandly.backend.platform.ai.ChatRole
+import com.bandly.backend.platform.ai.ChatTurn
 import com.bandly.backend.platform.ai.GenerationJobService
 import com.bandly.backend.platform.ai.GenerationRequest
 import com.bandly.backend.platform.error.NotFoundException
@@ -52,6 +54,31 @@ class LogoService(
         return dnaColors
             ?.let { siteService.updateBrandPalette(bandId, it.primaryColor, it.secondaryColor) }
             ?: siteService.getContent(bandId)
+    }
+
+    /**
+     * Claude looking at an artist's own uploaded logo (SiteController.uploadLogo)
+     * and describing its visual mood in words that are actually comparable to
+     * how they describe their sound — reuses the same vision path the Identity
+     * Chat already uses for an artist's photo (ChatTurn.imageBase64), just as
+     * a one-shot call instead of a real back-and-forth. The result travels
+     * into the chat as ChatRequest.visualReference (see IdentityChatService),
+     * not stored here — it's conversational context, not site content.
+     */
+    fun describeUploadedLogo(bandId: UUID, imageBase64: String, mimeType: String): String {
+        // Claude's vision input accepts raster formats, not SVG — this isn't
+        // caught by the try/catch this method's only caller already wraps it
+        // in by accident, it's a known, permanent limitation worth being
+        // explicit about rather than spending a doomed API call discovering.
+        if (mimeType == "image/svg+xml") return ""
+
+        val turn = ChatTurn(
+            role = ChatRole.USER,
+            content = "Describe this logo's visual mood in one concrete sentence.",
+            imageBase64 = imageBase64,
+            imageMimeType = mimeType,
+        )
+        return generationJobs.runChat(bandId, "logo-visual-feel", LOGO_FEEL_SYSTEM_PROMPT, listOf(turn))
     }
 
     private fun buildPrompt(bandId: UUID, dnaColors: ArtistDnaColors?): GenerationRequest {
@@ -109,5 +136,14 @@ class LogoService(
 
     companion object {
         val DEFAULT_LOGO = LogoMark(fontFamily = "Kaushan Script", colorHex = "#e0913f", italic = true)
+
+        private val LOGO_FEEL_SYSTEM_PROMPT = """
+            You are looking at an independent musician's logo. Describe what it
+            visually feels like in ONE concrete sentence — the kind of vocabulary
+            that also describes music: warm or cold, raw or polished, playful or
+            serious, vintage or modern, minimal or maximalist, aggressive or
+            gentle. Be specific to this image, not generic design-review language.
+            Return only that sentence, nothing else.
+        """.trimIndent()
     }
 }

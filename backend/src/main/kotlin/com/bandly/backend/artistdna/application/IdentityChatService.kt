@@ -24,12 +24,19 @@ class IdentityChatService(
     private val artistDnaService: ArtistDnaService,
 ) {
 
-    fun reply(bandId: UUID, history: List<ChatTurn>, language: String, soundReferences: List<String> = emptyList()): String {
+    fun reply(
+        bandId: UUID,
+        history: List<ChatTurn>,
+        language: String,
+        soundReferences: List<String> = emptyList(),
+        visualReference: String? = null,
+    ): String {
         val resolvedLanguage = if (SupportedLanguages.isSupported(language)) language.lowercase() else "en"
         val prompt = "$BANDLY_SYSTEM_PROMPT\n\nConduct this whole conversation in " +
             "${SupportedLanguages.nameFor(resolvedLanguage)} — the artist chose that language, so your " +
             "replies (and your reading of their answers) should be in it too." +
-            soundReferenceContext(soundReferences)
+            soundReferenceContext(soundReferences) +
+            visualReferenceContext(visualReference)
         return generationJobs.runChat(bandId, "identity-chat", prompt, history)
     }
 
@@ -46,6 +53,29 @@ class IdentityChatService(
             "\"what does your music sound like\" from scratch. Instead, reflect what you're hearing back to them " +
             "naturally (in your own words, don't just repeat this description verbatim) and ask what's most " +
             "essentially THEIRS about it versus other artists who sound similar."
+    }
+
+    /** Whether an already-uploaded logo's visual mood (see LogoService.
+     * describeUploadedLogo) actually fits the sound/personality/feeling
+     * emerging in conversation. Deliberately tied to one specific dimension
+     * (Feeling) rather than left as "raise it whenever relevant" — a first
+     * version of this prompt said exactly that, and in practice the
+     * strict one-question-per-dimension rule above always won, so the
+     * observation never actually surfaced. Anchoring it to a dimension
+     * that's already about to be asked works with that rule instead of
+     * competing with it. */
+    private fun visualReferenceContext(visualReference: String?): String {
+        if (visualReference.isNullOrBlank()) return ""
+        return "\n\nBefore this conversation started, the artist also shared their own existing logo — " +
+            "not something you're generating, something they already have. Here's what it visually feels " +
+            "like: $visualReference\n\nWhen you reach the Feeling dimension (what they want someone to feel " +
+            "the moment the music starts), first silently check whether this logo's feel actually fits the " +
+            "sound and personality that emerged earlier. If it clearly does, ask your normal Feeling question " +
+            "and say nothing about the logo. If there's a real tension (say, the logo reads playful and bright " +
+            "but the music is heavy and brooding), fold that observation INTO your Feeling question itself — " +
+            "one sentence of genuine curiosity, never a critique, e.g. \"Your logo feels really [X], but what " +
+            "you're describing feels [Y] — what do you want someone to feel the second your music starts?\" " +
+            "Still exactly one question for this dimension, just an informed one."
     }
 
     /** Turns the conversation into a saved Identity Profile — the same

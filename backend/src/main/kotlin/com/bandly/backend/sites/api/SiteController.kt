@@ -60,10 +60,19 @@ class SiteController(
      * generating a font-based wordmark for artists who already have a real
      * design (see SiteContentData.logoImage on why it takes precedence). */
     @PostMapping("/logo/upload")
-    fun uploadLogo(@PathVariable bandId: UUID, @Valid @RequestBody request: UploadLogoRequest): SiteContentData {
+    fun uploadLogo(@PathVariable bandId: UUID, @Valid @RequestBody request: UploadLogoRequest): UploadLogoResponse {
         bandService.requireMembership(bandId, requireAuthenticatedUser())
         validateLogoImage(request.imageBase64, request.mimeType)
-        return siteService.updateLogoImage(bandId, LogoImage(request.imageBase64, request.mimeType))
+        val content = siteService.updateLogoImage(bandId, LogoImage(request.imageBase64, request.mimeType))
+        // Best-effort: a failed vision call shouldn't block the upload the
+        // artist actually asked for — Bandly just won't have anything to
+        // compare it against in the conversation that follows.
+        val visualDescription = try {
+            logoService.describeUploadedLogo(bandId, request.imageBase64, request.mimeType)
+        } catch (ex: Exception) {
+            ""
+        }
+        return UploadLogoResponse(content, visualDescription)
     }
 
     private fun validateLogoImage(base64: String, mimeType: String) {
