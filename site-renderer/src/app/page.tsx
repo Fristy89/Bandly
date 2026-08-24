@@ -38,9 +38,9 @@ export default async function SitePage({
 
   return (
     <div style={paletteStyle}>
-      <Navbar artistName={content.artist.name} logoMark={content.logoMark} />
+      <Navbar artistName={content.artist.name} logoMark={content.logoMark} logoImage={content.logoImage} />
       <main>
-        <Hero artist={content.artist} images={content.images} logoMark={content.logoMark} />
+        <Hero artist={content.artist} images={content.images} logoMark={content.logoMark} logoImage={content.logoImage} />
         <MusicSection tracks={content.tracks} />
         <ShowsSection shows={content.shows} />
         <Bio texts={content.texts} images={content.images} />

@@ -1,11 +1,15 @@
 package com.bandly.backend.sites.api
 
 import com.bandly.backend.identity.application.BandService
+import com.bandly.backend.platform.error.ApiException
 import com.bandly.backend.platform.error.UnauthorizedException
 import com.bandly.backend.platform.security.currentUserId
 import com.bandly.backend.sites.application.LogoService
 import com.bandly.backend.sites.application.SiteService
+import com.bandly.backend.sites.domain.LogoImage
 import com.bandly.backend.sites.domain.SiteContentData
+import jakarta.validation.Valid
+import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -13,6 +17,7 @@ import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import java.util.Base64
 import java.util.UUID
 
 /** Band-scoped, authenticated — the admin side (Bandly's own "Website" page). */
@@ -51,13 +56,38 @@ class SiteController(
         return logoService.generateLogo(bandId)
     }
 
-    @PostMapping("/publish")
-    fun publish(@PathVariable bandId: UUID, @RequestBody request: PublishRequest): SiteResponse {
+    /** An artist's own logo, uploaded as-is — the alternative to LogoService
+     * generating a font-based wordmark for artists who already have a real
+     * design (see SiteContentData.logoImage on why it takes precedence). */
+    @PostMapping("/logo/upload")
+    fun uploadLogo(@PathVariable bandId: UUID, @Valid @RequestBody request: UploadLogoRequest): SiteContentData {
         bandService.requireMembership(bandId, requireAuthenticatedUser())
-        val site = siteService.setPublished(bandId, request.published)
-        return SiteResponse(site.id, site.subdomain, site.customDomain, site.published, site.updatedAt)
+        validateLogoImage(request.imageBase64, request.mimeType)
+        return siteService.updateLogoImage(bandId, LogoImage(request.imageBase64, request.mimeType))
+    }
+
+    private fun validateLogoImage(base64: String, mimeType: String) {
+        if (mimeType !in ALLOWED_LOGO_TYPES) {
+            throw ApiException(HttpStatus.BAD_REQUEST, "Unsupported logo image type: $mimeType")
+        }
+        val decodedSize = try {
+            Base64.getDecoder().decode(base64).size
+        } catch (ex: IllegalArgumentException) {
+            throw ApiException(HttpStatus.BAD_REQUEST, "Logo image data isn't valid base64")
+        }
+        if (decodedSize > MAX_LOGO_BYTES) {
+            throw ApiException(HttpStatus.BAD_REQUEST, "That logo is too large — please use one under 2 MB")
+        }
     }
 
     private fun requireAuthenticatedUser(): UUID =
         currentUserId() ?: throw UnauthorizedException("Authentication required")
+
+    companion object {
+        // Rendered via <img>, never inlined into the page markup — an SVG
+        // loaded that way can't execute embedded scripts, so it's as safe
+        // as any raster format here despite being technically "code."
+        private val ALLOWED_LOGO_TYPES = setOf("image/png", "image/jpeg", "image/webp", "image/svg+xml")
+        private const val MAX_LOGO_BYTES = 2 * 1024 * 1024
+    }
 }

@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { SignatureMark } from "./SignatureMark";
-import type { ArtistInfo, LogoMark, SiteImages } from "@/lib/types";
+import type { ArtistInfo, LogoImage, LogoMark, SiteImages } from "@/lib/types";
 
 /**
  * The reference site's Hero doubles as the live-stage player entry point
@@ -14,10 +14,12 @@ export function Hero({
   artist,
   images,
   logoMark,
+  logoImage,
 }: {
   artist: ArtistInfo;
   images: SiteImages;
   logoMark: LogoMark | null;
+  logoImage: LogoImage | null;
 }) {
   return (
     <section
@@ -42,7 +44,8 @@ export function Hero({
           <SignatureMark
             name={artist.name || "Your artist name"}
             logoMark={logoMark}
-            className="text-5xl sm:text-7xl"
+            logoImage={logoImage}
+            className="mx-auto h-24 text-5xl sm:h-32 sm:text-7xl"
           />
         </motion.h1>
         {artist.tagline ? (

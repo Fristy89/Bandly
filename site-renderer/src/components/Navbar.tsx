@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { SignatureMark } from "./SignatureMark";
-import type { LogoMark } from "@/lib/types";
+import type { LogoImage, LogoMark } from "@/lib/types";
 
 const SECTIONS = [
   { id: "home", label: "Home" },
@@ -12,7 +12,15 @@ const SECTIONS = [
   { id: "contact", label: "Contact" },
 ];
 
-export function Navbar({ artistName, logoMark }: { artistName: string; logoMark: LogoMark | null }) {
+export function Navbar({
+  artistName,
+  logoMark,
+  logoImage,
+}: {
+  artistName: string;
+  logoMark: LogoMark | null;
+  logoImage: LogoImage | null;
+}) {
   return (
     <motion.nav
       initial={{ opacity: 0, y: -16 }}
@@ -22,7 +30,7 @@ export function Navbar({ artistName, logoMark }: { artistName: string; logoMark:
     >
       <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
         <a href="#home">
-          <SignatureMark name={artistName} logoMark={logoMark} className="text-lg" />
+          <SignatureMark name={artistName} logoMark={logoMark} logoImage={logoImage} className="h-8 text-lg" />
         </a>
         <div className="hidden gap-8 text-xs font-medium uppercase tracking-[0.2em] text-ink-muted sm:flex">
           {SECTIONS.map((section) => (

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, type CSSProperties } from "react";
-import type { ArtistDnaVersionResponse, AssetType, GeneratedAssetResponse, LogoMark } from "@/shared/api/types";
+import type { ArtistDnaVersionResponse, AssetType, GeneratedAssetResponse, LogoImage, LogoMark } from "@/shared/api/types";
 import { ButtonLink } from "@/shared/ui/button";
 import { SignatureMark } from "@/shared/ui/signature-mark";
 import { AssetCard } from "./asset-card";
@@ -38,12 +38,14 @@ export function DnaResults({
   assets: initialAssets,
   version,
   logoMark,
+  logoImage,
 }: {
   bandId: string;
   bandName: string;
   assets: GeneratedAssetResponse[];
   version: ArtistDnaVersionResponse | null;
   logoMark: LogoMark | null;
+  logoImage?: LogoImage | null;
 }) {
   const [assets, setAssets] = useState(initialAssets);
   const byType = new Map(assets.map((asset) => [asset.assetType, asset]));
@@ -63,7 +65,8 @@ export function DnaResults({
           <SignatureMark
             name={bandName}
             logoMark={logoMark}
-            className="mt-4 block text-6xl leading-tight sm:text-7xl"
+            logoImage={logoImage}
+            className="mt-4 block h-20 text-6xl leading-tight sm:h-28 sm:text-7xl"
           />
         ) : (
           <h1 className="mt-4 font-display text-display-lg text-ink">Your Artist DNA</h1>

@@ -61,6 +61,7 @@ export function IdentityChat({ bandId }: { bandId: string }) {
   const [phase, setPhase] = useState<Phase>("tracks");
   const [soundReferences, setSoundReferences] = useState<string[]>([]);
   const [preferredColor, setPreferredColor] = useState<string | null>(null);
+  const [hasOwnLogo, setHasOwnLogo] = useState(false);
   const [assets, setAssets] = useState<GeneratedAssetResponse[] | null>(null);
   const [version, setVersion] = useState<ArtistDnaVersionResponse | null>(null);
   const [siteContent, setSiteContent] = useState<SiteContentData | null>(null);
@@ -254,10 +255,16 @@ export function IdentityChat({ bandId }: { bandId: string }) {
 
       setPhase("signature");
       try {
-        const content = await apiFetch<SiteContentData>(`/api/v1/bands/${bandId}/site/logo/generate`, {
-          method: "POST",
-          token: accessToken,
-        });
+        // An artist who already uploaded their own logo (ReferenceTracksStep)
+        // doesn't need one generated — logoImage already outranks logoMark
+        // wherever both exist, but there's no reason to spend an AI call on
+        // a wordmark nobody will actually see rendered.
+        const content = hasOwnLogo
+          ? await apiFetch<SiteContentData>(`/api/v1/bands/${bandId}/site/content`, { token: accessToken })
+          : await apiFetch<SiteContentData>(`/api/v1/bands/${bandId}/site/logo/generate`, {
+              method: "POST",
+              token: accessToken,
+            });
         setSiteContent(content);
       } catch {
         // The signature wordmark is a flourish on top of the DNA text and
@@ -274,9 +281,10 @@ export function IdentityChat({ bandId }: { bandId: string }) {
     return (
       <ReferenceTracksStep
         bandId={bandId}
-        onContinue={(references, color) => {
+        onContinue={(references, color, ownLogo) => {
           setSoundReferences(references);
           setPreferredColor(color);
+          setHasOwnLogo(ownLogo);
           setPhase("chatting");
         }}
       />
@@ -291,6 +299,7 @@ export function IdentityChat({ bandId }: { bandId: string }) {
         assets={assets}
         version={version}
         logoMark={siteContent?.logoMark ?? null}
+        logoImage={siteContent?.logoImage ?? null}
       />
     );
   }

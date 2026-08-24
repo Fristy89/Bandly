@@ -18,6 +18,15 @@ type TrackSlot = {
   error?: string;
 };
 
+type LogoUploadState =
+  | { status: "idle" }
+  | { status: "uploading" }
+  | { status: "done"; dataUrl: string }
+  | { status: "error"; message: string };
+
+const ALLOWED_LOGO_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/svg+xml"]);
+const MAX_LOGO_BYTES = 2 * 1024 * 1024;
+
 /**
  * A step before the Identity Chat, not a turn inside it — Gemini (not
  * Claude, which has no audio input at all) actually listens to each track
@@ -31,13 +40,16 @@ export function ReferenceTracksStep({
   onContinue,
 }: {
   bandId: string;
-  onContinue: (soundReferences: string[], preferredColor: string | null) => void;
+  onContinue: (soundReferences: string[], preferredColor: string | null, hasOwnLogo: boolean) => void;
 }) {
   const { accessToken } = useAuth();
   const [tracks, setTracks] = useState<TrackSlot[]>([]);
   const [hasOwnColor, setHasOwnColor] = useState(false);
   const [color, setColor] = useState("#1c4fa8");
+  const [hasOwnLogo, setHasOwnLogo] = useState(false);
+  const [logoUpload, setLogoUpload] = useState<LogoUploadState>({ status: "idle" });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   const doneDescriptions = tracks
     .filter((t): t is TrackSlot & { description: string } => t.status === "done" && !!t.description)
@@ -72,6 +84,42 @@ export function ReferenceTracksStep({
 
   function removeTrack(id: string) {
     setTracks((current) => current.filter((t) => t.id !== id));
+  }
+
+  async function handleLogoSelected(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !accessToken) return;
+
+    if (!ALLOWED_LOGO_TYPES.has(file.type)) {
+      setLogoUpload({ status: "error", message: "That file type isn't supported — try a PNG, JPEG, WEBP, or SVG." });
+      return;
+    }
+    if (file.size > MAX_LOGO_BYTES) {
+      setLogoUpload({ status: "error", message: "That logo is too large — please use one under 2 MB." });
+      return;
+    }
+
+    setLogoUpload({ status: "uploading" });
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error("Couldn't read that file."));
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+      const base64 = dataUrl.split(",")[1] ?? "";
+      await apiFetch(`/api/v1/bands/${bandId}/site/logo/upload`, {
+        method: "POST",
+        token: accessToken,
+        body: JSON.stringify({ imageBase64: base64, mimeType: file.type }),
+      });
+      setLogoUpload({ status: "done", dataUrl });
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Couldn't upload that logo.";
+      setLogoUpload({ status: "error", message });
+    }
   }
 
   return (
@@ -161,14 +209,69 @@ export function ReferenceTracksStep({
         )}
       </div>
 
+      <div className="mt-6 border-t border-border pt-6">
+        <label className="flex items-center gap-2 text-sm text-ink">
+          <input
+            type="checkbox"
+            checked={hasOwnLogo}
+            onChange={(event) => {
+              setHasOwnLogo(event.target.checked);
+              if (!event.target.checked) setLogoUpload({ status: "idle" });
+            }}
+            className="size-4 rounded border-border"
+          />
+          I already have a logo design — it tells a story too
+        </label>
+        {hasOwnLogo ? (
+          <div className="mt-3 flex items-center gap-3">
+            {logoUpload.status === "done" ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoUpload.dataUrl} alt="Your uploaded logo" className="h-12 w-12 rounded object-contain" />
+            ) : null}
+            <button
+              type="button"
+              onClick={() => logoInputRef.current?.click()}
+              disabled={logoUpload.status === "uploading"}
+              className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink transition-colors hover:border-border-strong hover:bg-surface-raised disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {logoUpload.status === "uploading"
+                ? "Uploading…"
+                : logoUpload.status === "done"
+                  ? "Replace logo"
+                  : "Upload your logo"}
+            </button>
+            {logoUpload.status === "error" ? (
+              <p role="alert" className="text-xs text-attention">
+                {logoUpload.message}
+              </p>
+            ) : logoUpload.status === "done" ? (
+              <p className="text-xs text-ink-faint">Bandly will use this instead of generating a wordmark.</p>
+            ) : null}
+          </div>
+        ) : (
+          <p className="mt-1 text-xs text-ink-faint">
+            No logo yet? Bandly will design a signature wordmark that fits your sound.
+          </p>
+        )}
+        <input
+          ref={logoInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/svg+xml,.png,.jpg,.jpeg,.webp,.svg"
+          onChange={handleLogoSelected}
+          className="hidden"
+        />
+      </div>
+
       <div className="mt-6 flex items-center gap-3">
         <Button
           type="button"
           variant="primary"
-          disabled={analyzing}
-          onClick={() => onContinue(doneDescriptions, hasOwnColor ? color : null)}
+          disabled={analyzing || logoUpload.status === "uploading"}
+          onClick={() => onContinue(doneDescriptions, hasOwnColor ? color : null, logoUpload.status === "done")}
         >
-          {doneDescriptions.length > 0 || hasOwnColor ? "Continue to the conversation" : "Skip — start the conversation"}
+          {doneDescriptions.length > 0 || hasOwnColor || logoUpload.status === "done"
+            ? "Continue to the conversation"
+            : "Skip — start the conversation"}
         </Button>
       </div>
     </div>

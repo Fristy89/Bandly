@@ -70,6 +70,11 @@ export type LogoMark = {
   italic: boolean;
 };
 
+export type LogoImage = {
+  base64: string;
+  mimeType: string;
+};
+
 // Partial mirror of SiteContentData.kt — only the fields the DNA reveal
 // screen reads (see dna-results.tsx). The full site content model (tracks,
 // shows, images, seo, ...) belongs to the not-yet-built site-editing admin
@@ -80,4 +85,5 @@ export type SiteContentData = {
     tagline: string;
   };
   logoMark: LogoMark | null;
+  logoImage: LogoImage | null;
 };

@@ -21,8 +21,19 @@ data class SiteContentData(
     val texts: SiteTexts = SiteTexts(),
     val seo: SiteSeo = SiteSeo(),
     /** AI-generated wordmark styling — see LogoService. Null until the band
-     * generates one; the renderer falls back to plain text until then. */
+     * generates one; the renderer falls back to plain text until then.
+     * Superseded by logoImage below when the artist has their own real
+     * logo design — a font/color choice isn't relevant once an actual
+     * image exists, but this stays populated (rather than getting cleared)
+     * so switching back is just dropping logoImage, not regenerating. */
     val logoMark: LogoMark? = null,
+    /** An artist's own existing logo design, uploaded as-is rather than
+     * generated — see SiteController.uploadLogo. Takes precedence over
+     * logoMark wherever both exist (SignatureMark on the renderer, and its
+     * frontend counterpart, both check this first); an AI-styled wordmark
+     * is a stand-in for artists who don't have a real logo yet, not
+     * something that should override one that does. */
+    val logoImage: LogoImage? = null,
     /** Copied from the band's current Artist DNA version the moment a logo
      * is generated (see LogoService) — not decided independently here.
      * Lets the renderer theme more than just the wordmark (accent color,
@@ -49,6 +60,20 @@ data class LogoMark(
     val fontFamily: String,
     val colorHex: String,
     val italic: Boolean = true,
+)
+
+/**
+ * An artist's real logo file, stored inline as base64 in this same JSONB
+ * blob — the simple, no-new-infrastructure choice for now (no object
+ * storage exists anywhere in this app yet). Deliberately not the long-term
+ * answer: a real logo file bloats every read/write of the surrounding
+ * SiteContentData row, not just logo-related ones. Worth moving to actual
+ * object storage (S3-compatible) before this needs to handle real
+ * production traffic — revisit then, not guessed at now.
+ */
+data class LogoImage(
+    val base64: String,
+    val mimeType: String,
 )
 
 /** The only fonts LogoService will ever pick from — curated so the AI's

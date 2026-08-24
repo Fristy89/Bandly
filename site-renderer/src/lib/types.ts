@@ -46,6 +46,11 @@ export type LogoMark = {
   italic: boolean;
 };
 
+export type LogoImage = {
+  base64: string;
+  mimeType: string;
+};
+
 export type BrandPalette = {
   primaryColor: string;
   secondaryColor: string;
@@ -59,6 +64,7 @@ export type SiteContentData = {
   texts: SiteTexts;
   seo: SiteSeo;
   logoMark: LogoMark | null;
+  logoImage: LogoImage | null;
   brandPalette: BrandPalette | null;
 };
 
