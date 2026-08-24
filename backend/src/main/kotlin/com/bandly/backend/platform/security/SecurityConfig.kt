@@ -7,8 +7,10 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
+import org.springframework.http.HttpStatus
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.web.SecurityFilterChain
+import org.springframework.security.web.authentication.HttpStatusEntryPoint
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
@@ -29,6 +31,16 @@ class SecurityConfig(
             .cors { it.configurationSource(corsConfigurationSource()) }
             .csrf { it.disable() }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
+            // Without this, adding .oauth2Login() below silently replaces the
+            // default entry point for the WHOLE app: every unauthenticated
+            // request to any endpoint (not just the OAuth2 ones) would
+            // redirect the browser to Google instead of returning a plain
+            // 401 — breaking the JSON API contract the frontend's apiFetch/
+            // ApiError handling depends on. Clicking "Continue with Google"
+            // still works: that redirect happens via a dedicated filter
+            // matching /oauth2/authorization/google specifically, not
+            // through this exception-handling path at all.
+            .exceptionHandling { it.authenticationEntryPoint(HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)) }
             .authorizeHttpRequests {
                 it.requestMatchers(
                     "/api/v1/auth/register",
