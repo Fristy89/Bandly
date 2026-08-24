@@ -81,6 +81,45 @@ class LogoService(
         return generationJobs.runChat(bandId, "logo-visual-feel", LOGO_FEEL_SYSTEM_PROMPT, listOf(turn))
     }
 
+    /**
+     * The structured counterpart to IdentityChatService's in-conversation
+     * mismatch check — that one is Bandly noticing out loud, mid-chat, in
+     * whatever words fit the moment; this one runs once the DNA is actually
+     * final and needs a clean yes/no plus a short reason a UI can act on
+     * (the reveal screen's offer to generate a matching signature instead).
+     * Fails open (matches=true) on any error or missing DNA — never block
+     * or falsely alarm the artist over a check that couldn't run.
+     */
+    fun checkLogoMatch(bandId: UUID, visualReference: String): LogoMatchResult {
+        val identity = try {
+            artistDnaService.currentDna(bandId).joinToString("\n") { "${it.assetType}: ${it.content}" }
+        } catch (ex: NotFoundException) {
+            return LogoMatchResult(matches = true, note = "")
+        }
+
+        return generationJobs.runStructured(
+            bandId = bandId,
+            module = "logo-match-check",
+            request = GenerationRequest(
+                systemPrompt = """
+                    You're checking whether an independent musician's own uploaded
+                    logo actually fits the artist identity they've established.
+                    You'll be given a description of the logo's visual mood and
+                    their Artist DNA (bios, tone). Decide honestly whether the
+                    logo's feel and the music's feel genuinely align — minor
+                    differences in specifics don't count as a mismatch, only a
+                    real tonal clash (e.g. a bright, playful logo for heavy,
+                    brooding music). Return matches=true/false and a short,
+                    one-sentence, non-judgmental note explaining your read
+                    either way.
+                """.trimIndent(),
+                userPrompt = "Logo's visual mood: $visualReference\n\nArtist DNA:\n$identity",
+            ),
+            responseType = LogoMatchResult::class.java,
+            fallback = { LogoMatchResult(matches = true, note = "") },
+        )
+    }
+
     private fun buildPrompt(bandId: UUID, dnaColors: ArtistDnaColors?): GenerationRequest {
         val identity = try {
             artistDnaService.currentDna(bandId).joinToString("\n") { "${it.assetType}: ${it.content}" }
@@ -147,3 +186,5 @@ class LogoService(
         """.trimIndent()
     }
 }
+
+data class LogoMatchResult(val matches: Boolean, val note: String)

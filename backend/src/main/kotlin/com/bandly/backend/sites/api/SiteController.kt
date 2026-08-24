@@ -4,6 +4,7 @@ import com.bandly.backend.identity.application.BandService
 import com.bandly.backend.platform.error.ApiException
 import com.bandly.backend.platform.error.UnauthorizedException
 import com.bandly.backend.platform.security.currentUserId
+import com.bandly.backend.sites.application.LogoMatchResult
 import com.bandly.backend.sites.application.LogoService
 import com.bandly.backend.sites.application.SiteService
 import com.bandly.backend.sites.domain.LogoImage
@@ -73,6 +74,16 @@ class SiteController(
             ""
         }
         return UploadLogoResponse(content, visualDescription)
+    }
+
+    /** The structured, post-DNA counterpart to Bandly's in-conversation
+     * mismatch check (IdentityChatService) — called from the reveal screen
+     * once the DNA is final, so the artist gets an actual "generate a
+     * matching signature instead" offer rather than just a comment. */
+    @PostMapping("/logo/check-match")
+    fun checkLogoMatch(@PathVariable bandId: UUID, @Valid @RequestBody request: CheckLogoMatchRequest): LogoMatchResult {
+        bandService.requireMembership(bandId, requireAuthenticatedUser())
+        return logoService.checkLogoMatch(bandId, request.visualReference)
     }
 
     private fun validateLogoImage(base64: String, mimeType: String) {

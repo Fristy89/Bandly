@@ -22,6 +22,10 @@ data class UploadLogoRequest(
     @field:NotBlank val mimeType: String,
 )
 
+data class CheckLogoMatchRequest(
+    @field:NotBlank val visualReference: String,
+)
+
 data class UploadLogoResponse(
     val content: SiteContentData,
     /** Claude's read of the logo's visual mood (LogoService.describeUploadedLogo)

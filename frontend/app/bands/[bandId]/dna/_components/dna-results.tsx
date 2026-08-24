@@ -2,8 +2,17 @@
 
 import Link from "next/link";
 import { useState, type CSSProperties } from "react";
-import type { ArtistDnaVersionResponse, AssetType, GeneratedAssetResponse, LogoImage, LogoMark } from "@/shared/api/types";
-import { ButtonLink } from "@/shared/ui/button";
+import { apiFetch, ApiError } from "@/shared/api/client";
+import { useAuth } from "@/shared/auth/auth-context";
+import type {
+  ArtistDnaVersionResponse,
+  AssetType,
+  GeneratedAssetResponse,
+  LogoImage,
+  LogoMark,
+  SiteContentData,
+} from "@/shared/api/types";
+import { Button, ButtonLink } from "@/shared/ui/button";
 import { SignatureMark } from "@/shared/ui/signature-mark";
 import { AssetCard } from "./asset-card";
 
@@ -39,6 +48,7 @@ export function DnaResults({
   version,
   logoMark,
   logoImage,
+  logoMismatchNote,
 }: {
   bandId: string;
   bandName: string;
@@ -46,12 +56,41 @@ export function DnaResults({
   version: ArtistDnaVersionResponse | null;
   logoMark: LogoMark | null;
   logoImage?: LogoImage | null;
+  /** Bandly's own read on whether the artist's uploaded logo actually fits
+   * the DNA that just got compiled (LogoService.checkLogoMatch) — null/
+   * undefined when there's nothing to flag (no upload, or a good fit). */
+  logoMismatchNote?: string | null;
 }) {
+  const { accessToken } = useAuth();
   const [assets, setAssets] = useState(initialAssets);
+  const [signature, setSignature] = useState({ logoMark, logoImage });
+  const [mismatchNote, setMismatchNote] = useState(logoMismatchNote ?? null);
+  const [generatingAlternative, setGeneratingAlternative] = useState(false);
   const byType = new Map(assets.map((asset) => [asset.assetType, asset]));
 
   function handleUpdated(updated: GeneratedAssetResponse) {
     setAssets((current) => current.map((a) => (a.id === updated.id ? updated : a)));
+  }
+
+  async function generateAlternativeSignature() {
+    if (!accessToken) return;
+    setGeneratingAlternative(true);
+    try {
+      const content = await apiFetch<SiteContentData>(`/api/v1/bands/${bandId}/site/logo/generate`, {
+        method: "POST",
+        token: accessToken,
+      });
+      // The backend clears logoImage the moment a logoMark is (re)generated
+      // (SiteService.updateLogoMark) — mirroring that here keeps this view
+      // in sync without a full refetch.
+      setSignature({ logoMark: content.logoMark, logoImage: null });
+      setMismatchNote(null);
+    } catch (err) {
+      // Non-critical — the offer just stays up so they can try again.
+      console.error(err instanceof ApiError ? err.message : err);
+    } finally {
+      setGeneratingAlternative(false);
+    }
   }
 
   return (
@@ -64,8 +103,8 @@ export function DnaResults({
         {bandName ? (
           <SignatureMark
             name={bandName}
-            logoMark={logoMark}
-            logoImage={logoImage}
+            logoMark={signature.logoMark}
+            logoImage={signature.logoImage}
             className="mt-4 block h-20 text-6xl leading-tight sm:h-28 sm:text-7xl"
           />
         ) : (
@@ -75,6 +114,30 @@ export function DnaResults({
           Compiled from your conversation with Bandly. Nothing here is published yet — read it over, rewrite
           anything that isn&apos;t quite you.
         </p>
+
+        {mismatchNote ? (
+          <div className="mx-auto mt-5 max-w-md rounded-2xl border border-attention/30 bg-attention-soft p-4 text-left">
+            <p className="text-sm text-ink">{mismatchNote}</p>
+            <div className="mt-3 flex items-center gap-3">
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                loading={generatingAlternative}
+                onClick={generateAlternativeSignature}
+              >
+                Generate a matching signature instead
+              </Button>
+              <button
+                type="button"
+                onClick={() => setMismatchNote(null)}
+                className="text-xs text-ink-faint underline decoration-border underline-offset-4 hover:text-ink"
+              >
+                Keep my own logo
+              </button>
+            </div>
+          </div>
+        ) : null}
       </header>
 
       {version?.primaryColor ? (

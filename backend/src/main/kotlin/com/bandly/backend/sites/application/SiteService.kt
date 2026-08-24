@@ -61,11 +61,16 @@ class SiteService(
         return siteContents.save(row).content
     }
 
+    /** Also clears logoImage — logoMark only ever renders when logoImage is
+     * absent (SignatureMark), so leaving a stale upload in place here would
+     * make a freshly generated mark silently invisible. Choosing to
+     * (re)generate a wordmark is itself the signal that whatever's
+     * generated should actually be what's shown. */
     @Transactional
     fun updateLogoMark(bandId: UUID, logoMark: LogoMark): SiteContentData {
         val site = getOrCreateSite(bandId)
         val row = siteContents.findBySiteId(site.id) ?: SiteContent(siteId = site.id)
-        row.content = row.content.copy(logoMark = logoMark)
+        row.content = row.content.copy(logoMark = logoMark, logoImage = null)
         return siteContents.save(row).content
     }
 

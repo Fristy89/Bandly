@@ -63,6 +63,7 @@ export function IdentityChat({ bandId }: { bandId: string }) {
   const [preferredColor, setPreferredColor] = useState<string | null>(null);
   const [hasOwnLogo, setHasOwnLogo] = useState(false);
   const [visualReference, setVisualReference] = useState<string | null>(null);
+  const [logoMismatchNote, setLogoMismatchNote] = useState<string | null>(null);
   const [assets, setAssets] = useState<GeneratedAssetResponse[] | null>(null);
   const [version, setVersion] = useState<ArtistDnaVersionResponse | null>(null);
   const [siteContent, setSiteContent] = useState<SiteContentData | null>(null);
@@ -271,6 +272,24 @@ export function IdentityChat({ bandId }: { bandId: string }) {
         // The signature wordmark is a flourish on top of the DNA text and
         // colors, not a requirement — the reveal still stands without it.
       }
+
+      // Bandly's own in-conversation mismatch check (BANDLY_SYSTEM_PROMPT's
+      // Feeling-dimension nudge) is just a comment — this is the structured
+      // version, run now that the DNA is actually final, so the reveal can
+      // offer an actual "generate a matching signature instead" action.
+      if (hasOwnLogo && visualReference) {
+        try {
+          const match = await apiFetch<{ matches: boolean; note: string }>(
+            `/api/v1/bands/${bandId}/site/logo/check-match`,
+            { method: "POST", token: accessToken, body: JSON.stringify({ visualReference }) },
+          );
+          if (!match.matches) setLogoMismatchNote(match.note);
+        } catch {
+          // Same reasoning as the signature step above — a flourish, not a
+          // requirement.
+        }
+      }
+
       setPhase("done");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Couldn't build your DNA from this conversation — try again.");
@@ -302,6 +321,7 @@ export function IdentityChat({ bandId }: { bandId: string }) {
         version={version}
         logoMark={siteContent?.logoMark ?? null}
         logoImage={siteContent?.logoImage ?? null}
+        logoMismatchNote={logoMismatchNote}
       />
     );
   }
