@@ -13,6 +13,7 @@ type AuthContextValue = {
   status: AuthStatus;
   login: (email: string, password: string) => Promise<AuthResponse>;
   register: (email: string, password: string) => Promise<AuthResponse>;
+  loginWithOAuthCode: (code: string) => Promise<AuthResponse>;
   logout: () => Promise<void>;
 };
 
@@ -65,6 +66,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [applySession],
   );
 
+  /** Redeems the one-time code /oauth-callback got redirected here with
+   * after a Google sign-in (see OAuth2LoginSuccessHandler on the backend) —
+   * the real session was never in that URL, just this single-use code. */
+  const loginWithOAuthCode = useCallback(
+    async (code: string) => {
+      const session = await apiFetch<AuthResponse>("/api/v1/auth/oauth/exchange", {
+        method: "POST",
+        body: JSON.stringify({ code }),
+      });
+      return applySession(session);
+    },
+    [applySession],
+  );
+
   const logout = useCallback(async () => {
     await apiFetch("/api/v1/auth/logout", { method: "POST" }).catch(() => {
       // Best-effort — even if this fails, forget the local session below.
@@ -75,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, accessToken, status, login, register, logout }}>
+    <AuthContext.Provider value={{ user, accessToken, status, login, register, loginWithOAuthCode, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -15,6 +15,10 @@ data class LoginRequest(
     @field:NotBlank val password: String,
 )
 
+data class OAuthExchangeRequest(
+    @field:NotBlank val code: String,
+)
+
 data class AuthResponse(
     val userId: UUID,
     val email: String,

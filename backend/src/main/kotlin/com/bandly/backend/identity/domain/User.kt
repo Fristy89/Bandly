@@ -21,8 +21,11 @@ class User(
     @Column(nullable = false, unique = true, length = 320)
     var email: String,
 
-    @Column(name = "password_hash", nullable = false)
-    var passwordHash: String,
+    @Column(name = "password_hash")
+    var passwordHash: String? = null,
+
+    @Column(name = "auth_provider", nullable = false, length = 20)
+    var authProvider: String = "local",
 
     @Column(name = "email_verified_at")
     var emailVerifiedAt: Instant? = null,

@@ -28,3 +28,10 @@ data class TtsProperties(
     // Google's own flagship example voice across their docs/samples.
     val voice: String = "Kore",
 )
+
+@ConfigurationProperties(prefix = "bandly.oauth.google")
+data class GoogleOAuthProperties(
+    val enabled: Boolean = false,
+    val clientId: String = "",
+    val clientSecret: String = "",
+)

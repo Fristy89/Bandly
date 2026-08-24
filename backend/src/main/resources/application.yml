@@ -61,6 +61,18 @@ bandly:
     enabled: ${BANDLY_TTS_ENABLED:false}
     google-api-key: ${BANDLY_TTS_GOOGLE_API_KEY:}
     voice: ${BANDLY_TTS_VOICE:Kore}
+  oauth:
+    google:
+      # Same pattern again: the ClientRegistrationRepository bean only gets
+      # built (see OAuth2ClientConfig) when this is true. Unlike a plain
+      # spring.security.oauth2.client.registration.google block, Spring
+      # Boot's own OAuth2ClientProperties validates client-id as non-empty
+      # the moment that block exists at all — regardless of any flag —
+      # which would make Google credentials mandatory just to start the
+      # app. Building the registration ourselves, conditionally, avoids that.
+      enabled: ${GOOGLE_OAUTH_ENABLED:false}
+      client-id: ${GOOGLE_OAUTH_CLIENT_ID:}
+      client-secret: ${GOOGLE_OAUTH_CLIENT_SECRET:}
 
 logging:
   level:

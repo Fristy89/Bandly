@@ -44,7 +44,9 @@ class AuthService(
     fun login(email: String, rawPassword: String): IssuedSession {
         val user = users.findByEmailIgnoreCase(email.trim().lowercase())
             ?: throw UnauthorizedException("Invalid email or password")
-        if (!passwordEncoder.matches(rawPassword, user.passwordHash)) {
+        val passwordHash = user.passwordHash
+            ?: throw UnauthorizedException("Invalid email or password")
+        if (!passwordEncoder.matches(rawPassword, passwordHash)) {
             throw UnauthorizedException("Invalid email or password")
         }
         return issueSession(user)
@@ -67,8 +69,27 @@ class AuthService(
         )
     }
 
+
     fun logout(rawRefreshToken: String) {
         refreshTokenService.revoke(rawRefreshToken)
+    }
+
+    /**
+     * Called from OAuth2LoginSuccessHandler after Google confirms the
+     * artist's identity — matches purely on email, same account either way:
+     * an existing "local" (password) account signing in with Google for the
+     * first time logs into that same account rather than creating a
+     * duplicate, and a genuinely new email creates a fresh Google-only
+     * account (no password, authProvider = "google"). authProvider on an
+     * existing user is deliberately left as-is — it records how the account
+     * *originated*, not which method was used most recently.
+     */
+    @Transactional
+    fun findOrCreateGoogleUser(email: String): IssuedSession {
+        val normalizedEmail = email.trim().lowercase()
+        val user = users.findByEmailIgnoreCase(normalizedEmail)
+            ?: users.save(User(email = normalizedEmail, authProvider = "google"))
+        return issueSession(user)
     }
 
     private fun issueSession(user: User): IssuedSession =

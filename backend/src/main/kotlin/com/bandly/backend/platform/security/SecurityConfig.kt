@@ -1,14 +1,13 @@
 package com.bandly.backend.platform.security
 
 import com.bandly.backend.platform.config.CorsProperties
+import com.bandly.backend.platform.config.GoogleOAuthProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
-import org.springframework.security.crypto.argon2.Argon2PasswordEncoder
-import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.web.cors.CorsConfiguration
@@ -20,11 +19,9 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 class SecurityConfig(
     private val jwtService: JwtService,
     private val corsProperties: CorsProperties,
+    private val oauth2LoginSuccessHandler: OAuth2LoginSuccessHandler,
+    private val googleOAuthProperties: GoogleOAuthProperties,
 ) {
-
-    // Argon2id, per the blueprint's security architecture (§11).
-    @Bean
-    fun passwordEncoder(): PasswordEncoder = Argon2PasswordEncoder(16, 32, 1, 19456, 2)
 
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
@@ -37,6 +34,13 @@ class SecurityConfig(
                     "/api/v1/auth/register",
                     "/api/v1/auth/login",
                     "/api/v1/auth/refresh",
+                    "/api/v1/auth/oauth/exchange",
+                    // The redirect-to-Google and Google's-callback-lands-here
+                    // routes — Spring Security serves these itself, but they
+                    // still pass through this same filter chain, so they need
+                    // to be reachable before anyone has a JWT.
+                    "/oauth2/authorization/**",
+                    "/login/oauth2/code/**",
                     "/actuator/health",
                     // Swagger UI itself is public for local dev testing; the API
                     // calls made *through* it still require the Bearer token you
@@ -51,6 +55,17 @@ class SecurityConfig(
                 it.anyRequest().authenticated()
             }
             .addFilterBefore(JwtAuthenticationFilter(jwtService), UsernamePasswordAuthenticationFilter::class.java)
+
+        // Only wired in when a ClientRegistrationRepository bean actually
+        // exists (OAuth2ClientConfig, gated on the same flag) — calling
+        // .oauth2Login() unconditionally would make Spring look for that
+        // bean regardless, and fail to start without it.
+        if (googleOAuthProperties.enabled) {
+            http.oauth2Login { oauth2 ->
+                oauth2.authorizationEndpoint { it.authorizationRequestRepository(CookieAuthorizationRequestRepository()) }
+                oauth2.successHandler(oauth2LoginSuccessHandler)
+            }
+        }
 
         return http.build()
     }

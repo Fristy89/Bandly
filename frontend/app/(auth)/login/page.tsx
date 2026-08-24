@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { ApiError } from "@/shared/api/client";
+import { ApiError, API_BASE } from "@/shared/api/client";
 import { useAuth } from "@/shared/auth/auth-context";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -88,6 +88,23 @@ export default function LoginPage() {
           {loading ? "Logging in" : "Log in"}
         </Button>
       </form>
+
+      <div className="mt-5 flex items-center gap-3 text-xs text-ink-faint">
+        <span className="h-px flex-1 bg-border" />
+        or
+        <span className="h-px flex-1 bg-border" />
+      </div>
+
+      {/* A plain redirect, not a fetch — the browser needs to actually
+          navigate here so the backend can set the OAuth2 state cookie and
+          hand off to Google's own login page (see SecurityConfig.oauth2Login
+          / CookieAuthorizationRequestRepository on the backend). */}
+      <a
+        href={`${API_BASE}/oauth2/authorization/google`}
+        className="mt-5 flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-border bg-surface text-sm font-medium text-ink transition-colors hover:border-border-strong hover:bg-surface-raised"
+      >
+        Continue with Google
+      </a>
 
       <p className="mt-6 text-center text-sm text-ink-muted">
         New to Bandly?{" "}

@@ -22,4 +22,5 @@ frontend/next-env.d.ts
 # --- env / secrets ---
 .env
 .env.local
+oauth.env
 *.pem
