@@ -121,6 +121,11 @@ data class Show(
 data class SiteImages(
     val logo: String = "",
     val heroBackground: String = "",
+    /** A real photo of the artist/band — set via SiteController.uploadPhoto
+     * as a self-contained data: URI (base64 inline, same simple-for-now
+     * storage choice as LogoImage — see that type's doc comment), not a
+     * separate base64/mimeType pair, since this field predates that
+     * pattern and a data URI drops straight into an <img src> either way. */
     val bioPhoto: String = "",
 )
 

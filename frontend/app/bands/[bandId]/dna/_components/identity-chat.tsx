@@ -329,6 +329,7 @@ export function IdentityChat({ bandId }: { bandId: string }) {
         logoImage={siteContent?.logoImage ?? null}
         logoMismatchNote={logoMismatchNote}
         logoCandidates={logoCandidates}
+        bioPhoto={siteContent?.images?.bioPhoto || null}
       />
     );
   }

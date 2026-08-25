@@ -83,6 +83,14 @@ class SiteService(
     }
 
     @Transactional
+    fun updateBioPhoto(bandId: UUID, dataUri: String): SiteContentData {
+        val site = getOrCreateSite(bandId)
+        val row = siteContents.findBySiteId(site.id) ?: SiteContent(siteId = site.id)
+        row.content = row.content.copy(images = row.content.images.copy(bioPhoto = dataUri))
+        return siteContents.save(row).content
+    }
+
+    @Transactional
     fun updateBrandPalette(bandId: UUID, primaryColor: String, secondaryColor: String): SiteContentData {
         val site = getOrCreateSite(bandId)
         val row = siteContents.findBySiteId(site.id) ?: SiteContent(siteId = site.id)

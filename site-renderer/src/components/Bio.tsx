@@ -1,6 +1,6 @@
 import type { SiteImages, SiteTexts } from "@/lib/types";
 
-export function Bio({ texts, images }: { texts: SiteTexts; images: SiteImages }) {
+export function Bio({ artistName, texts, images }: { artistName: string; texts: SiteTexts; images: SiteImages }) {
   if (!texts.bio) return null;
 
   return (
@@ -12,7 +12,7 @@ export function Bio({ texts, images }: { texts: SiteTexts; images: SiteImages })
         </div>
         {images.bioPhoto ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={images.bioPhoto} alt="" className="w-full rounded-lg object-cover" />
+          <img src={images.bioPhoto} alt={artistName} className="w-full rounded-lg object-cover" />
         ) : null}
       </div>
     </section>

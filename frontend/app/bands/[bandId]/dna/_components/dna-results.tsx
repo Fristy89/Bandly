@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type CSSProperties } from "react";
+import { useRef, useState, type ChangeEvent, type CSSProperties } from "react";
 import { apiFetch, ApiError } from "@/shared/api/client";
 import { useAuth } from "@/shared/auth/auth-context";
 import type {
@@ -50,6 +50,7 @@ export function DnaResults({
   logoImage,
   logoMismatchNote,
   logoCandidates,
+  bioPhoto,
 }: {
   bandId: string;
   bandName: string;
@@ -65,6 +66,10 @@ export function DnaResults({
    * not just the applied one — lets "try another" below cycle through
    * already-generated options with zero AI wait (POST .../logo/apply). */
   logoCandidates?: LogoMark[];
+  /** A real photo of the artist/band, if one's already been uploaded
+   * (SiteContentData.images.bioPhoto) — shown on the public site's bio
+   * section, unlike the signature this is never AI-reasoned. */
+  bioPhoto?: string | null;
 }) {
   const { accessToken } = useAuth();
   const [assets, setAssets] = useState(initialAssets);
@@ -73,6 +78,10 @@ export function DnaResults({
   const [generatingAlternative, setGeneratingAlternative] = useState(false);
   const [candidates, setCandidates] = useState(logoCandidates ?? []);
   const [candidateIndex, setCandidateIndex] = useState(0);
+  const [photo, setPhoto] = useState(bioPhoto ?? null);
+  const [photoStatus, setPhotoStatus] = useState<"idle" | "uploading" | "error">("idle");
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const byType = new Map(assets.map((asset) => [asset.assetType, asset]));
 
   function handleUpdated(updated: GeneratedAssetResponse) {
@@ -121,6 +130,44 @@ export function DnaResults({
     } catch (err) {
       // The UI already shows it — worth persisting, not worth blocking on.
       console.error(err instanceof ApiError ? err.message : err);
+    }
+  }
+
+  async function handlePhotoSelected(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !accessToken) return;
+
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+      setPhotoStatus("error");
+      setPhotoError("That file type isn't supported — try a PNG, JPEG, or WEBP.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setPhotoStatus("error");
+      setPhotoError("That photo is too large — please use one under 5 MB.");
+      return;
+    }
+
+    setPhotoStatus("uploading");
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error("Couldn't read that file."));
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+      const base64 = dataUrl.split(",")[1] ?? "";
+      await apiFetch(`/api/v1/bands/${bandId}/site/photo/upload`, {
+        method: "POST",
+        token: accessToken,
+        body: JSON.stringify({ imageBase64: base64, mimeType: file.type }),
+      });
+      setPhoto(dataUrl);
+      setPhotoStatus("idle");
+    } catch (err) {
+      setPhotoStatus("error");
+      setPhotoError(err instanceof ApiError ? err.message : "Couldn't upload that photo.");
     }
   }
 
@@ -210,6 +257,46 @@ export function DnaResults({
           </div>
         </div>
       ) : null}
+
+      <div
+        className="mb-6 flex items-center gap-4 rounded-[28px] bg-surface/70 p-6 shadow-[0_1px_2px_rgba(36,32,26,0.04),0_16px_40px_-24px_rgba(36,32,26,0.18)] backdrop-blur-xl motion-safe:animate-[rise-in_0.5s_cubic-bezier(0.2,0.8,0.2,1)]"
+        style={riseInDelay(1.5)}
+      >
+        {photo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={photo} alt={bandName || "Your photo"} className="size-14 rounded-full object-cover" />
+        ) : (
+          <span className="flex size-14 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent-strong">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className="size-5">
+              <path
+                d="M4.5 8.5A1.5 1.5 0 0 1 6 7h2l1-2h6l1 2h2a1.5 1.5 0 0 1 1.5 1.5V18A1.5 1.5 0 0 1 18 19.5H6A1.5 1.5 0 0 1 4.5 18Z"
+                strokeLinejoin="round"
+              />
+              <circle cx="12" cy="13" r="3.25" />
+            </svg>
+          </span>
+        )}
+        <div className="text-xs text-ink-muted">
+          <button
+            type="button"
+            onClick={() => photoInputRef.current?.click()}
+            disabled={photoStatus === "uploading"}
+            className="font-medium text-ink underline decoration-border underline-offset-4 hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {photoStatus === "uploading" ? "Uploading…" : photo ? "Replace photo" : "Add a photo of yourself or the band"}
+          </button>
+          <p className="mt-0.5">
+            {photoError ?? "Shown on your public site's bio section, so fans know who they're looking at."}
+          </p>
+        </div>
+        <input
+          ref={photoInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"
+          onChange={handlePhotoSelected}
+          className="hidden"
+        />
+      </div>
 
       <div className="flex flex-col gap-5">
         {ASSET_ORDER.map((type, index) => {

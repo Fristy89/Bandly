@@ -95,4 +95,7 @@ export type SiteContentData = {
   };
   logoMark: LogoMark | null;
   logoImage: LogoImage | null;
+  images: {
+    bioPhoto: string;
+  };
 };

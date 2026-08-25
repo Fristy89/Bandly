@@ -43,7 +43,7 @@ export default async function SitePage({
         <Hero artist={content.artist} images={content.images} logoMark={content.logoMark} logoImage={content.logoImage} />
         <MusicSection tracks={content.tracks} />
         <ShowsSection shows={content.shows} />
-        <Bio texts={content.texts} images={content.images} />
+        <Bio artistName={content.artist.name} texts={content.texts} images={content.images} />
         <ContactSection artist={content.artist} />
       </main>
       <Footer artistName={content.artist.name} />

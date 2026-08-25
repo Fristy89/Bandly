@@ -99,17 +99,31 @@ class SiteController(
         return logoService.checkLogoMatch(bandId, request.visualReference)
     }
 
-    private fun validateLogoImage(base64: String, mimeType: String) {
-        if (mimeType !in ALLOWED_LOGO_TYPES) {
-            throw ApiException(HttpStatus.BAD_REQUEST, "Unsupported logo image type: $mimeType")
+    /** A real photo of the artist/band for the public site's bio section
+     * (SiteImages.bioPhoto) — a plain visual identifier, not something an
+     * AI reasons about like the logo/color choices above. */
+    @PostMapping("/photo/upload")
+    fun uploadPhoto(@PathVariable bandId: UUID, @Valid @RequestBody request: UploadPhotoRequest): SiteContentData {
+        bandService.requireMembership(bandId, requireAuthenticatedUser())
+        validateImage(request.imageBase64, request.mimeType, ALLOWED_PHOTO_TYPES, MAX_PHOTO_BYTES, "photo")
+        val dataUri = "data:${request.mimeType};base64,${request.imageBase64}"
+        return siteService.updateBioPhoto(bandId, dataUri)
+    }
+
+    private fun validateLogoImage(base64: String, mimeType: String) =
+        validateImage(base64, mimeType, ALLOWED_LOGO_TYPES, MAX_LOGO_BYTES, "logo")
+
+    private fun validateImage(base64: String, mimeType: String, allowedTypes: Set<String>, maxBytes: Int, label: String) {
+        if (mimeType !in allowedTypes) {
+            throw ApiException(HttpStatus.BAD_REQUEST, "Unsupported $label type: $mimeType")
         }
         val decodedSize = try {
             Base64.getDecoder().decode(base64).size
         } catch (ex: IllegalArgumentException) {
-            throw ApiException(HttpStatus.BAD_REQUEST, "Logo image data isn't valid base64")
+            throw ApiException(HttpStatus.BAD_REQUEST, "That $label's data isn't valid base64")
         }
-        if (decodedSize > MAX_LOGO_BYTES) {
-            throw ApiException(HttpStatus.BAD_REQUEST, "That logo is too large — please use one under 2 MB")
+        if (decodedSize > maxBytes) {
+            throw ApiException(HttpStatus.BAD_REQUEST, "That $label is too large — please use one under ${maxBytes / (1024 * 1024)} MB")
         }
     }
 
@@ -122,5 +136,12 @@ class SiteController(
         // as any raster format here despite being technically "code."
         private val ALLOWED_LOGO_TYPES = setOf("image/png", "image/jpeg", "image/webp", "image/svg+xml")
         private const val MAX_LOGO_BYTES = 2 * 1024 * 1024
+
+        // No SVG here — a bio photo is always a real raster photo, never a
+        // vector design. Same 5MB cap the Identity Chat's photo upload
+        // uses (IdentityChatController) — a phone photo routinely runs
+        // 3-4MB even after typical compression.
+        private val ALLOWED_PHOTO_TYPES = setOf("image/png", "image/jpeg", "image/webp")
+        private const val MAX_PHOTO_BYTES = 5 * 1024 * 1024
     }
 }
