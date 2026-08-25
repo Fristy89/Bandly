@@ -4,10 +4,12 @@ import com.bandly.backend.identity.application.BandService
 import com.bandly.backend.platform.error.ApiException
 import com.bandly.backend.platform.error.UnauthorizedException
 import com.bandly.backend.platform.security.currentUserId
+import com.bandly.backend.sites.application.GeneratedLogoOptions
 import com.bandly.backend.sites.application.LogoMatchResult
 import com.bandly.backend.sites.application.LogoService
 import com.bandly.backend.sites.application.SiteService
 import com.bandly.backend.sites.domain.LogoImage
+import com.bandly.backend.sites.domain.LogoMark
 import com.bandly.backend.sites.domain.SiteContentData
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -50,11 +52,22 @@ class SiteController(
     }
 
     /** Generates AND applies a new signature wordmark in one call — see
-     * LogoService for why that's one step, not generate-then-save. */
+     * LogoService for why that's one step, not generate-then-save. Also
+     * returns the other candidates from the same call (GeneratedLogoOptions)
+     * so the reveal screen can offer "try another" as an instant swap via
+     * applyLogoMark below, instead of a second full generation. */
     @PostMapping("/logo/generate")
-    fun generateLogo(@PathVariable bandId: UUID): SiteContentData {
+    fun generateLogo(@PathVariable bandId: UUID): GeneratedLogoOptions {
         bandService.requireMembership(bandId, requireAuthenticatedUser())
         return logoService.generateLogo(bandId)
+    }
+
+    /** The instant half of "try another" — applies one of the candidates
+     * generateLogo already returned, no AI call. */
+    @PostMapping("/logo/apply")
+    fun applyLogoMark(@PathVariable bandId: UUID, @RequestBody mark: LogoMark): SiteContentData {
+        bandService.requireMembership(bandId, requireAuthenticatedUser())
+        return logoService.applyLogoMark(bandId, mark)
     }
 
     /** An artist's own logo, uploaded as-is — the alternative to LogoService

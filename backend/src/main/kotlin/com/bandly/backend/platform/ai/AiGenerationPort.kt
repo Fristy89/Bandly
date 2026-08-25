@@ -62,4 +62,10 @@ data class ChatTurn(
 data class GenerationRequest(
     val systemPrompt: String,
     val userPrompt: String,
+    /** Overrides the default model (bandly.ai's spring.ai.anthropic.chat.
+     * options.model) for this call only — for a task simple enough that
+     * the default frontier-tier model is pure latency with no quality
+     * benefit, e.g. LogoService picking a font from a curated list of 12.
+     * Null uses the app-wide default, same as before this field existed. */
+    val model: String? = null,
 )

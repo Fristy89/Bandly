@@ -8,6 +8,8 @@ import type {
   ChatReplyResponse,
   ChatTurn,
   GeneratedAssetResponse,
+  GeneratedLogoOptions,
+  LogoMark,
   SiteContentData,
 } from "@/shared/api/types";
 import { useAuth } from "@/shared/auth/auth-context";
@@ -67,6 +69,7 @@ export function IdentityChat({ bandId }: { bandId: string }) {
   const [assets, setAssets] = useState<GeneratedAssetResponse[] | null>(null);
   const [version, setVersion] = useState<ArtistDnaVersionResponse | null>(null);
   const [siteContent, setSiteContent] = useState<SiteContentData | null>(null);
+  const [logoCandidates, setLogoCandidates] = useState<LogoMark[]>([]);
   const [bandName, setBandName] = useState("");
   const [speakReplies, setSpeakReplies] = useState(true);
   const [voiceOptions, setVoiceOptions] = useState<SpeechSynthesisVoice[]>([]);
@@ -261,13 +264,16 @@ export function IdentityChat({ bandId }: { bandId: string }) {
         // doesn't need one generated — logoImage already outranks logoMark
         // wherever both exist, but there's no reason to spend an AI call on
         // a wordmark nobody will actually see rendered.
-        const content = hasOwnLogo
-          ? await apiFetch<SiteContentData>(`/api/v1/bands/${bandId}/site/content`, { token: accessToken })
-          : await apiFetch<SiteContentData>(`/api/v1/bands/${bandId}/site/logo/generate`, {
-              method: "POST",
-              token: accessToken,
-            });
-        setSiteContent(content);
+        if (hasOwnLogo) {
+          setSiteContent(await apiFetch<SiteContentData>(`/api/v1/bands/${bandId}/site/content`, { token: accessToken }));
+        } else {
+          const generated = await apiFetch<GeneratedLogoOptions>(`/api/v1/bands/${bandId}/site/logo/generate`, {
+            method: "POST",
+            token: accessToken,
+          });
+          setSiteContent(generated.content);
+          setLogoCandidates(generated.candidates);
+        }
       } catch {
         // The signature wordmark is a flourish on top of the DNA text and
         // colors, not a requirement — the reveal still stands without it.
@@ -322,6 +328,7 @@ export function IdentityChat({ bandId }: { bandId: string }) {
         logoMark={siteContent?.logoMark ?? null}
         logoImage={siteContent?.logoImage ?? null}
         logoMismatchNote={logoMismatchNote}
+        logoCandidates={logoCandidates}
       />
     );
   }

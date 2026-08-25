@@ -31,30 +31,53 @@ class LogoService(
     private val generationJobs: GenerationJobService,
 ) {
 
-    fun generateLogo(bandId: UUID): SiteContentData {
+    /**
+     * Generates GENERATE_COUNT candidates in one call rather than one —
+     * applies the first immediately (unchanged behavior), but returns the
+     * rest too so the reveal screen can offer "try another" as an instant,
+     * no-AI-call swap (see applyLogoMark) instead of a second full
+     * generation. That's the actual fix for "regenerating takes too long
+     * when the artist isn't happy": the wait only ever happens once.
+     *
+     * Also uses HAIKU_MODEL instead of the app's default frontier model —
+     * picking a font from a curated list of 12 is a simple classification
+     * task with no reasoning depth this identity's writing doesn't need,
+     * so there's no quality tradeoff being made for the latency win here.
+     */
+    fun generateLogo(bandId: UUID): GeneratedLogoOptions {
         val dnaColors = artistDnaService.currentColors(bandId)
 
-        val aiChoice = generationJobs.runStructured(
+        val choices = generationJobs.runStructured(
             bandId = bandId,
             module = "site-logo",
             request = buildPrompt(bandId, dnaColors),
-            responseType = LogoMark::class.java,
-            fallback = { DEFAULT_LOGO },
+            responseType = LogoMarkCandidates::class.java,
+            fallback = { LogoMarkCandidates(listOf(DEFAULT_LOGO)) },
         )
         // DNA's palette wins over the model's independent color guess when
         // one exists — the whole point of this feature is that the logo's
         // color isn't decided twice, disconnected from the rest of the
         // brand. Font/italic stay the model's own call either way; a color
         // palette and a typeface aren't the same kind of decision.
-        val mark = sanitize(aiChoice).let { m ->
-            dnaColors?.let { m.copy(colorHex = it.primaryColor) } ?: m
-        }
+        val candidates = choices.candidates.ifEmpty { listOf(DEFAULT_LOGO) }
+            .map { c -> sanitize(c).let { m -> dnaColors?.let { m.copy(colorHex = it.primaryColor) } ?: m } }
+            .distinct()
+            .take(GENERATE_COUNT)
 
-        siteService.updateLogoMark(bandId, mark)
-        return dnaColors
+        siteService.updateLogoMark(bandId, candidates.first())
+        val content = dnaColors
             ?.let { siteService.updateBrandPalette(bandId, it.primaryColor, it.secondaryColor) }
             ?: siteService.getContent(bandId)
+        return GeneratedLogoOptions(content, candidates)
     }
+
+    /** The instant half of "try another": no AI call at all, just persists
+     * an already-generated candidate the reveal screen cached from
+     * generateLogo's response. Re-sanitized rather than trusted — this is
+     * client-submitted input, even if it originated from our own AI call a
+     * moment earlier. */
+    fun applyLogoMark(bandId: UUID, mark: LogoMark): SiteContentData =
+        siteService.updateLogoMark(bandId, sanitize(mark))
 
     /**
      * Claude looking at an artist's own uploaded logo (SiteController.uploadLogo)
@@ -130,23 +153,27 @@ class LogoService(
 
         return GenerationRequest(
             systemPrompt = """
-                You are choosing a signature wordmark style for an independent
+                You are choosing signature wordmark styles for an independent
                 musician's website: a font, a color, and whether it should be
-                italic. Pick exactly one font name from this list, copied
-                character for character, nothing else:
+                italic. Return $GENERATE_COUNT genuinely different options, best
+                first — not near-duplicates (varying only the color slightly
+                doesn't count as different). Each font must come from this
+                list, copied character for character, nothing else:
                 ${SignatureFonts.CURATED.joinToString(", ")}
 
                 Match the artist's actual genre and mood, not just what looks
                 nice in general — a metal band and a lounge singer should not
-                land on the same font.
+                land on the same font, and none of your $GENERATE_COUNT options
+                should feel like a wrong fit even though they differ from each
+                other.
                 ${
             if (dnaColors != null) {
                 "This artist already has a brand color, ${dnaColors.primaryColor} — it will be " +
                     "used regardless of what you choose here, so just pick the font/italic that " +
-                    "suits it. Still return a color field; it will be ignored."
+                    "suits it for each option. Still return a color field on each; it will be ignored."
             } else {
-                "No brand color exists yet, so also choose one hex color that suits the font and " +
-                    "the artist."
+                "No brand color exists yet, so also choose one hex color per option that suits its " +
+                    "font and the artist."
             }
         }
             """.trimIndent(),
@@ -159,6 +186,10 @@ class LogoService(
                     appendLine(identity)
                 }
             },
+            // Picking a font from a curated list is simple classification —
+            // no reasoning depth here that the app's default frontier model
+            // would add quality for, only latency.
+            model = HAIKU_MODEL,
         )
     }
 
@@ -176,6 +207,12 @@ class LogoService(
     companion object {
         val DEFAULT_LOGO = LogoMark(fontFamily = "Kaushan Script", colorHex = "#e0913f", italic = true)
 
+        private const val GENERATE_COUNT = 3
+
+        // Haiku 4.5 — see generateLogo's doc comment for why this task
+        // specifically doesn't need the app's default frontier-tier model.
+        private const val HAIKU_MODEL = "claude-haiku-4-5-20251001"
+
         private val LOGO_FEEL_SYSTEM_PROMPT = """
             You are looking at an independent musician's logo. Describe what it
             visually feels like in ONE concrete sentence — the kind of vocabulary
@@ -188,3 +225,9 @@ class LogoService(
 }
 
 data class LogoMatchResult(val matches: Boolean, val note: String)
+
+/** The raw shape Claude returns — GenerateLogoOptions is what the rest of
+ * the app actually works with (sanitized, deduplicated, DNA-color-applied). */
+data class LogoMarkCandidates(val candidates: List<LogoMark>)
+
+data class GeneratedLogoOptions(val content: SiteContentData, val candidates: List<LogoMark>)

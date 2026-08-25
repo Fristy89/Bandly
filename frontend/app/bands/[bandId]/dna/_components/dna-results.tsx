@@ -8,9 +8,9 @@ import type {
   ArtistDnaVersionResponse,
   AssetType,
   GeneratedAssetResponse,
+  GeneratedLogoOptions,
   LogoImage,
   LogoMark,
-  SiteContentData,
 } from "@/shared/api/types";
 import { Button, ButtonLink } from "@/shared/ui/button";
 import { SignatureMark } from "@/shared/ui/signature-mark";
@@ -49,6 +49,7 @@ export function DnaResults({
   logoMark,
   logoImage,
   logoMismatchNote,
+  logoCandidates,
 }: {
   bandId: string;
   bandName: string;
@@ -60,12 +61,18 @@ export function DnaResults({
    * the DNA that just got compiled (LogoService.checkLogoMatch) — null/
    * undefined when there's nothing to flag (no upload, or a good fit). */
   logoMismatchNote?: string | null;
+  /** Every candidate from the /logo/generate call that produced logoMark,
+   * not just the applied one — lets "try another" below cycle through
+   * already-generated options with zero AI wait (POST .../logo/apply). */
+  logoCandidates?: LogoMark[];
 }) {
   const { accessToken } = useAuth();
   const [assets, setAssets] = useState(initialAssets);
   const [signature, setSignature] = useState({ logoMark, logoImage });
   const [mismatchNote, setMismatchNote] = useState(logoMismatchNote ?? null);
   const [generatingAlternative, setGeneratingAlternative] = useState(false);
+  const [candidates, setCandidates] = useState(logoCandidates ?? []);
+  const [candidateIndex, setCandidateIndex] = useState(0);
   const byType = new Map(assets.map((asset) => [asset.assetType, asset]));
 
   function handleUpdated(updated: GeneratedAssetResponse) {
@@ -76,20 +83,44 @@ export function DnaResults({
     if (!accessToken) return;
     setGeneratingAlternative(true);
     try {
-      const content = await apiFetch<SiteContentData>(`/api/v1/bands/${bandId}/site/logo/generate`, {
+      const generated = await apiFetch<GeneratedLogoOptions>(`/api/v1/bands/${bandId}/site/logo/generate`, {
         method: "POST",
         token: accessToken,
       });
       // The backend clears logoImage the moment a logoMark is (re)generated
       // (SiteService.updateLogoMark) — mirroring that here keeps this view
       // in sync without a full refetch.
-      setSignature({ logoMark: content.logoMark, logoImage: null });
+      setSignature({ logoMark: generated.content.logoMark, logoImage: null });
+      setCandidates(generated.candidates);
+      setCandidateIndex(0);
       setMismatchNote(null);
     } catch (err) {
       // Non-critical — the offer just stays up so they can try again.
       console.error(err instanceof ApiError ? err.message : err);
     } finally {
       setGeneratingAlternative(false);
+    }
+  }
+
+  /** The actual fix for "not satisfied, want another one, fast": every
+   * candidate here already came back from the one AI call generateLogo (or
+   * generateAlternativeSignature) made — cycling through them is a plain
+   * persist, no generation, so there's nothing to wait on. */
+  async function tryAnotherSignature() {
+    if (!accessToken || candidates.length < 2) return;
+    const nextIndex = (candidateIndex + 1) % candidates.length;
+    const next = candidates[nextIndex];
+    setCandidateIndex(nextIndex);
+    setSignature({ logoMark: next, logoImage: null });
+    try {
+      await apiFetch(`/api/v1/bands/${bandId}/site/logo/apply`, {
+        method: "POST",
+        token: accessToken,
+        body: JSON.stringify(next),
+      });
+    } catch (err) {
+      // The UI already shows it — worth persisting, not worth blocking on.
+      console.error(err instanceof ApiError ? err.message : err);
     }
   }
 
@@ -110,6 +141,15 @@ export function DnaResults({
         ) : (
           <h1 className="mt-4 font-display text-display-lg text-ink">Your Artist DNA</h1>
         )}
+        {!signature.logoImage && candidates.length > 1 ? (
+          <button
+            type="button"
+            onClick={tryAnotherSignature}
+            className="mt-2 text-xs text-ink-faint underline decoration-border underline-offset-4 hover:text-ink"
+          >
+            Not this one? Try another style
+          </button>
+        ) : null}
         <p className="mx-auto mt-4 max-w-md text-[15px] leading-relaxed text-ink-muted">
           Compiled from your conversation with Bandly. Nothing here is published yet — read it over, rewrite
           anything that isn&apos;t quite you.

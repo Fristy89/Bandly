@@ -1,6 +1,7 @@
 package com.bandly.backend.platform.ai
 
 import org.slf4j.LoggerFactory
+import org.springframework.ai.anthropic.AnthropicChatOptions
 import org.springframework.ai.chat.client.ChatClient
 import org.springframework.ai.chat.messages.AssistantMessage
 import org.springframework.ai.chat.messages.Message
@@ -55,11 +56,13 @@ class SpringAiGenerationAdapter(chatClientBuilder: ChatClient.Builder) : AiGener
     override fun <T : Any> generateStructured(request: GenerationRequest, responseType: Class<T>, fallback: () -> T): T =
         try {
             val converter = BeanOutputConverter(responseType)
-            val response = chatClient.prompt()
+            var spec = chatClient.prompt()
                 .system(request.systemPrompt)
                 .user("${request.userPrompt}\n\n${converter.format}")
-                .call()
-                .chatResponse()
+            if (request.model != null) {
+                spec = spec.options(AnthropicChatOptions.builder().model(request.model))
+            }
+            val response = spec.call().chatResponse()
             val text = response?.results.orEmpty().joinToString("") { it.output.text.orEmpty() }
             if (text.isBlank()) fallback() else converter.convert(text)
         } catch (ex: Exception) {

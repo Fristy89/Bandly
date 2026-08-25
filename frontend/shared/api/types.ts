@@ -75,6 +75,15 @@ export type LogoImage = {
   mimeType: string;
 };
 
+// POST .../site/logo/generate now returns every candidate from that one AI
+// call, not just the applied one — see LogoService.generateLogo on the
+// backend for why (an instant "try another" via POST .../site/logo/apply,
+// no second AI call, is the actual fix for "regenerating feels slow").
+export type GeneratedLogoOptions = {
+  content: SiteContentData;
+  candidates: LogoMark[];
+};
+
 // Partial mirror of SiteContentData.kt — only the fields the DNA reveal
 // screen reads (see dna-results.tsx). The full site content model (tracks,
 // shows, images, seo, ...) belongs to the not-yet-built site-editing admin
