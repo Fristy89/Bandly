@@ -10,6 +10,7 @@ import com.bandly.backend.artistdna.domain.SupportedLanguages
 import com.bandly.backend.artistdna.infrastructure.ArtistDnaVersionRepository
 import com.bandly.backend.artistdna.infrastructure.GeneratedAssetRepository
 import com.bandly.backend.artistdna.infrastructure.IdentityProfileRepository
+import com.bandly.backend.identity.domain.PlatformBand
 import com.bandly.backend.identity.infrastructure.BandRepository
 import com.bandly.backend.platform.ai.GenerationJob
 import com.bandly.backend.platform.ai.GenerationJobService
@@ -97,6 +98,9 @@ class ArtistDnaService(
                 // to actually be it.
                 primaryColor = preferred ?: sanitizeColor(output.primaryColor, DEFAULT_PRIMARY_COLOR),
                 secondaryColor = sanitizeColor(output.secondaryColor, DEFAULT_SECONDARY_COLOR),
+                brandMantra = output.brandMantra.trim().ifBlank { null },
+                primaryArchetype = output.primaryArchetype.trim().ifBlank { null }?.take(60),
+                dnaComponents = sanitizeComponents(output.dnaComponents),
             ),
         )
         persistAssets(bandId, version.id, output)
@@ -223,11 +227,18 @@ class ArtistDnaService(
             Here is the artist's Identity Profile:
             ${formatAnswers(profile.answers)}
 
-            Produce all seven fields: a short bio (2-3 sentences), a long bio (2-3
+            Produce every field: a short bio (2-3 sentences), a long bio (2-3
             paragraphs), a one-line elevator pitch, an "about the artist" press-kit
             paragraph, a tone-of-voice note (words/themes that fit this artist, and
-            clichés or phrasing to avoid), and a two-color palette (primaryColor,
-            secondaryColor, both hex).
+            clichés or phrasing to avoid), a brandMantra (the single most quotable
+            one-line distillation of who this artist is — their spirit, not a
+            marketing tagline), a primaryArchetype (the one Jungian archetype that
+            best fits — one word: Rebel, Creator, Explorer, Sage, Hero, Magician,
+            Everyman, Lover, Jester, Caregiver, Ruler, or Innocent — chosen from the
+            patterns in their answers, not guessed), dnaComponents (4-6 single
+            uppercase words that read as a formula for this identity, e.g. REBEL,
+            STORYTELLER, TRANSFORMATION, FREEDOM), and a two-color palette
+            (primaryColor, secondaryColor, both hex).
 
             ${colorInstruction(preferredPrimaryColor)}
 
@@ -321,9 +332,33 @@ class ArtistDnaService(
         elevatorPitch = "[stub elevator pitch]",
         aboutTheArtist = "[stub about-the-artist paragraph]",
         toneOfVoice = "[stub tone-of-voice notes]",
+        brandMantra = "[stub brand mantra — enable bandly.ai.enabled]",
+        primaryArchetype = "Creator",
+        dnaComponents = listOf("STUB", "ENABLE", "BANDLY", "AI"),
         primaryColor = DEFAULT_PRIMARY_COLOR,
         secondaryColor = DEFAULT_SECONDARY_COLOR,
     )
+
+    /** Trim, uppercase, drop blanks/dupes, cap at 6 — the components are a
+     * compact formula, not a paragraph. */
+    private fun sanitizeComponents(raw: List<String>): List<String> =
+        raw.asSequence()
+            .map { it.trim().uppercase() }
+            .filter { it.isNotEmpty() }
+            .distinct()
+            .take(6)
+            .toList()
+
+    /**
+     * Bandly's own current DNA version, or null if the platform band has
+     * no generated DNA yet. Backs the public /api/v1/public/platform-dna
+     * the login screen reads.
+     */
+    fun platformDnaOrNull(): ArtistDnaVersion? {
+        val band = bands.findById(PlatformBand.ID).orElse(null) ?: return null
+        val versionId = band.currentDnaVersionId ?: return null
+        return dnaVersions.findById(versionId).orElse(null)
+    }
 
     companion object {
         private val DNA_SYSTEM_PROMPT = """
@@ -337,8 +372,14 @@ class ArtistDnaService(
             "rising star" or "genre-defying".
         """.trimIndent()
 
-        private const val DEFAULT_PRIMARY_COLOR = "#1c4fa8"
-        private const val DEFAULT_SECONDARY_COLOR = "#ac7423"
+        // Artist DNA palette, not the app's chrome blue/gold — when there's
+        // no AI-reasoned color to fall back from (stub mode, or a malformed
+        // value), a DNA version should still land in its own colorful world.
+        // Deep Violet (identity) + Fresh Teal (growth) from the Identity in
+        // Color palette. The model is still free to reason a bespoke pair
+        // per artist; this is only the floor.
+        private const val DEFAULT_PRIMARY_COLOR = "#6d28d9"
+        private const val DEFAULT_SECONDARY_COLOR = "#14b8a6"
         private val HEX_COLOR = Regex("^#[0-9a-fA-F]{6}$")
     }
 }

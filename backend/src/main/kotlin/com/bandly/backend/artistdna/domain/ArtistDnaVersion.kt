@@ -6,6 +6,8 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
 import java.time.Instant
 import java.util.UUID
 
@@ -42,6 +44,19 @@ class ArtistDnaVersion(
 
     @Column(name = "secondary_color", length = 7)
     var secondaryColor: String? = null,
+
+    /** The richer profile fields from the 20-question intake — reasoned in
+     * the same generation call. Nullable / empty on versions compiled
+     * before these existed; the login screen shows the platform band's. */
+    @Column(name = "brand_mantra", columnDefinition = "text")
+    var brandMantra: String? = null,
+
+    @Column(name = "primary_archetype", length = 60)
+    var primaryArchetype: String? = null,
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "dna_components", nullable = false, columnDefinition = "jsonb")
+    var dnaComponents: List<String> = emptyList(),
 
     @Column(name = "created_at", nullable = false, updatable = false)
     var createdAt: Instant = Instant.now(),

@@ -38,9 +38,55 @@ const OPENING_MESSAGES: Record<LanguageCode, string> = {
   de: "Hallo — ich bin Bandly. Ich möchte dich als Künstler kennenlernen, damit alles, wobei ich dir später helfe, wirklich nach dir klingt. Es gibt keine falschen Antworten. Was hat dich dazu gebracht, Musik zu machen?",
 };
 
-const MIN_TURNS_BEFORE_FINISH = 3;
+// The intake is a structured ~20-question walk through four phases (see
+// BANDLY_SYSTEM_PROMPT on the backend), so "finish & build" only unlocks
+// once the artist has genuinely worked through most of it — not after a
+// few exchanges. Still a floor, not a lock: Bandly tells them when every
+// phase is covered and they finish on their own call. Tune here.
+const MIN_TURNS_BEFORE_FINISH = 16;
 
-type Phase = "tracks" | "chatting" | "summarizing" | "generating" | "signature" | "done";
+// A quiet pause between the practical setup (reference tracks) and the
+// intake itself — the intake asks the artist to reflect honestly on who
+// they are, and it lands better if they arrive on purpose rather than
+// straight off a file upload. Framing only: there is deliberately no
+// timer and no per-question state, so the conversation stays adaptive.
+const MINDFUL_INTRO: Record<LanguageCode, { heading: string; body: string[]; start: string }> = {
+  en: {
+    heading: "Take a moment. Breathe.",
+    body: [
+      "These twenty questions aren't a test, and there are no right or wrong answers. Take your time to connect with what you actually feel and think.",
+      "Answer from your gut, not with what you think you're supposed to say.",
+      "There's no timer. If a question needs more space, stay with it — or come back to it later.",
+    ],
+    start: "I'm ready",
+  },
+  nl: {
+    heading: "Neem even de tijd. Adem.",
+    body: [
+      "Deze twintig vragen zijn geen test, en er zijn geen goede of foute antwoorden. Neem de tijd om te voelen wat er echt speelt.",
+      "Antwoord vanuit je onderbuik, niet met wat je denkt dat je hoort te zeggen.",
+      "Er is geen timer. Heeft een vraag meer ruimte nodig, blijf er dan bij — of kom er later op terug.",
+    ],
+    start: "Ik ben er klaar voor",
+  },
+  de: {
+    heading: "Nimm dir einen Moment. Atme.",
+    body: [
+      "Diese zwanzig Fragen sind kein Test, und es gibt keine richtigen oder falschen Antworten. Nimm dir Zeit, um zu spüren, was wirklich zählt.",
+      "Antworte aus dem Bauch heraus, nicht mit dem, was du sagen zu müssen glaubst.",
+      "Es gibt keinen Timer. Wenn eine Frage mehr Raum braucht, bleib bei ihr — oder komm später darauf zurück.",
+    ],
+    start: "Ich bin bereit",
+  },
+};
+
+const REFLECTION_HINTS: Record<LanguageCode, string> = {
+  en: "Take a breath. There's no perfect answer — listen to yourself.",
+  nl: "Adem even. Er is geen perfect antwoord — luister naar jezelf.",
+  de: "Atme kurz durch. Es gibt keine perfekte Antwort — hör auf dich selbst.",
+};
+
+type Phase = "tracks" | "intro" | "chatting" | "summarizing" | "generating" | "signature" | "done";
 
 /**
  * The conversational alternative to a static form (IdentityQuestions is
@@ -53,14 +99,23 @@ type Phase = "tracks" | "chatting" | "summarizing" | "generating" | "signature" 
  * Dutch, German, and English, both for the conversation and — via
  * IdentityProfile.language on the backend — for the DNA generated from it.
  */
-export function IdentityChat({ bandId }: { bandId: string }) {
+export function IdentityChat({
+  bandId,
+  // The admin intake for Bandly's own DNA (/admin/dna) skips the
+  // reference-tracks step — the platform isn't uploading songs — and drops
+  // straight into the mindful intro.
+  initialPhase = "tracks",
+}: {
+  bandId: string;
+  initialPhase?: Phase;
+}) {
   const { accessToken } = useAuth();
   const [language, setLanguage] = useState<LanguageCode>("nl");
   const [messages, setMessages] = useState<ChatTurn[]>([{ role: "assistant", content: OPENING_MESSAGES.nl }]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [phase, setPhase] = useState<Phase>("tracks");
+  const [phase, setPhase] = useState<Phase>(initialPhase);
   const [soundReferences, setSoundReferences] = useState<string[]>([]);
   const [preferredColor, setPreferredColor] = useState<string | null>(null);
   const [hasOwnLogo, setHasOwnLogo] = useState(false);
@@ -312,9 +367,36 @@ export function IdentityChat({ bandId }: { bandId: string }) {
           setPreferredColor(color);
           setHasOwnLogo(ownLogo);
           setVisualReference(logoFeel);
-          setPhase("chatting");
+          setPhase("intro");
         }}
       />
+    );
+  }
+
+  if (phase === "intro") {
+    const intro = MINDFUL_INTRO[language];
+    return (
+      <div className="mx-auto flex h-full max-w-lg flex-col justify-center px-6 py-12">
+        <Card
+          className="p-8 text-center"
+          style={{
+            background: "color-mix(in oklab, var(--dna-lavender) 55%, var(--surface))",
+            borderColor: "color-mix(in oklab, var(--dna-violet) 22%, transparent)",
+          }}
+        >
+          <h1 className="font-display text-display-md text-dna-violet-strong">{intro.heading}</h1>
+          <div className="mt-4 space-y-3 text-sm leading-relaxed text-ink-muted">
+            {intro.body.map((line, index) => (
+              <p key={index}>{line}</p>
+            ))}
+          </div>
+          <div className="mt-6">
+            <Button type="button" size="md" onClick={() => setPhase("chatting")}>
+              {intro.start}
+            </Button>
+          </div>
+        </Card>
+      </div>
     );
   }
 
@@ -340,8 +422,8 @@ export function IdentityChat({ bandId }: { bandId: string }) {
         <div>
           <h1 className="font-display text-display-md text-ink">Artist DNA</h1>
           <p className="mt-1 text-sm text-ink-muted">
-            A conversation, not a form — talk to Bandly about who you are as an artist, then turn it into your DNA
-            whenever you&apos;re ready.
+            A guided conversation in four short chapters — Bandly asks, you answer in your own words, and it
+            becomes your DNA when you&apos;re ready.
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -559,6 +641,8 @@ export function IdentityChat({ bandId }: { bandId: string }) {
         </form>
       </Card>
 
+      <p className="mt-3 text-center text-xs text-ink-faint">{REFLECTION_HINTS[language]}</p>
+
       {error ? (
         <p role="alert" className="mt-3 text-sm text-attention">
           {error}
@@ -569,7 +653,7 @@ export function IdentityChat({ bandId }: { bandId: string }) {
         <p className="text-xs text-ink-faint">
           {canFinish
             ? "Whenever you're ready — Bandly has enough to work with."
-            : `A few more exchanges and you'll be able to build your DNA (${userTurnCount}/${MIN_TURNS_BEFORE_FINISH}).`}
+            : `You're partway through the intake — keep going and you'll be able to build your DNA (${userTurnCount}/${MIN_TURNS_BEFORE_FINISH}).`}
         </p>
         <Button
           type="button"

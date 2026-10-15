@@ -32,6 +32,9 @@ data class ArtistDnaVersionResponse(
     val status: DnaStatus,
     val primaryColor: String?,
     val secondaryColor: String?,
+    val brandMantra: String?,
+    val primaryArchetype: String?,
+    val dnaComponents: List<String>,
     val createdAt: Instant,
 )
 

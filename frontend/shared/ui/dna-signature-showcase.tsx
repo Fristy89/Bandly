@@ -11,9 +11,12 @@ const playfair = Playfair_Display({ subsets: ["latin"], weight: "400", style: "i
 const anton = Anton({ subsets: ["latin"], weight: "400" });
 
 const EXAMPLES = [
+  // Marlow Bend's font + color are the real output of an actual generation
+  // run — left as-is. The other two are invented to show range, so they
+  // ride the Artist DNA palette (violet, electric coral) here.
   { name: "Marlow Bend", font: caveat.className, color: "#8FA3AC", mood: "warm, coastal indie folk" },
-  { name: "Aurelia Sky", font: playfair.className, color: "#7C9CD9", mood: "elegant, orchestral pop" },
-  { name: "IRON VEIL", font: anton.className, color: "#D9695C", mood: "heavy, aggressive metal" },
+  { name: "Aurelia Sky", font: playfair.className, color: "#8B6FD9", mood: "elegant, orchestral pop" },
+  { name: "IRON VEIL", font: anton.className, color: "#FF5C5C", mood: "heavy, aggressive metal" },
 ];
 
 /**

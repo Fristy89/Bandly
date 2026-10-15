@@ -38,6 +38,35 @@
   --attention-soft: #3a201b;
 }
 
+/* Artist DNA palette — deliberately vivid, and deliberately scoped. These
+   never feed the app's calm paper/surface/ink/accent system; they exist
+   only so the DNA reveal itself can burst with color while everything
+   around it stays quiet. Shared across every background tone, like the
+   brand colors above — the [data-bg] blocks never touch them. */
+:root {
+  --dna-violet: #6d28d9;
+  --dna-violet-strong: #5b21b6;
+  --dna-coral: #ff5c5c;
+  --dna-yellow: #f5c542;
+  --dna-teal: #14b8a6;
+  --dna-cobalt: #3155d9;
+  --dna-lavender: #ede4ff;
+  --dna-ivory: #faf8f4;
+  --dna-ink: #17151c;
+}
+
+.dark {
+  --dna-violet: #a78bfa;
+  --dna-violet-strong: #c4b5fd;
+  --dna-coral: #ff7a7a;
+  --dna-yellow: #f7d06b;
+  --dna-teal: #2dd4bf;
+  --dna-cobalt: #7c9cf5;
+  --dna-lavender: #241b38;
+  --dna-ivory: #201d27;
+  --dna-ink: #f0e8f5;
+}
+
 /* Background tones — the customer's choice of canvas. "Warm" is the
    default and lives on :root/.dark directly (no data-bg needed, so
    markup/SSR without the attribute still renders correctly). Applied via
@@ -139,6 +168,16 @@
   --color-good-soft: var(--good-soft);
   --color-attention: var(--attention);
   --color-attention-soft: var(--attention-soft);
+
+  --color-dna-violet: var(--dna-violet);
+  --color-dna-violet-strong: var(--dna-violet-strong);
+  --color-dna-coral: var(--dna-coral);
+  --color-dna-yellow: var(--dna-yellow);
+  --color-dna-teal: var(--dna-teal);
+  --color-dna-cobalt: var(--dna-cobalt);
+  --color-dna-lavender: var(--dna-lavender);
+  --color-dna-ivory: var(--dna-ivory);
+  --color-dna-ink: var(--dna-ink);
 
   --font-display: var(--font-fraunces);
   --font-sans: var(--font-geist-sans);

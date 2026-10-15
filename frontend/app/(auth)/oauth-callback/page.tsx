@@ -1,14 +1,14 @@
 import { Suspense } from "react";
-import { Card } from "@/shared/ui/card";
+import { AuthPanel } from "@/shared/ui/auth-panel";
 import { OAuthCallbackContent } from "./_components/oauth-callback-content";
 
 export default function OAuthCallbackPage() {
   return (
     <Suspense
       fallback={
-        <Card className="p-8 text-center">
+        <AuthPanel className="text-center">
           <p className="text-sm text-ink-muted">Finishing sign-in…</p>
-        </Card>
+        </AuthPanel>
       }
     >
       <OAuthCallbackContent />

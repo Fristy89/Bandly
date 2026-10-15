@@ -34,7 +34,19 @@ export type ArtistDnaVersionResponse = {
   status: DnaStatus;
   primaryColor: string | null;
   secondaryColor: string | null;
+  brandMantra: string | null;
+  primaryArchetype: string | null;
+  dnaComponents: string[];
   createdAt: string;
+};
+
+export type PlatformDnaResponse = {
+  generated: boolean;
+  components: string[];
+  brandMantra: string | null;
+  primaryArchetype: string | null;
+  primaryColor: string | null;
+  secondaryColor: string | null;
 };
 
 export type AssetType =

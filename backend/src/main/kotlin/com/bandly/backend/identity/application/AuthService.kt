@@ -1,6 +1,10 @@
 package com.bandly.backend.identity.application
 
+import com.bandly.backend.identity.domain.BandMember
+import com.bandly.backend.identity.domain.BandRole
+import com.bandly.backend.identity.domain.PlatformBand
 import com.bandly.backend.identity.domain.User
+import com.bandly.backend.identity.infrastructure.BandMemberRepository
 import com.bandly.backend.identity.infrastructure.UserRepository
 import com.bandly.backend.platform.error.ConflictException
 import com.bandly.backend.platform.error.UnauthorizedException
@@ -9,6 +13,7 @@ import com.bandly.backend.platform.security.RefreshTokenService
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Instant
 import java.util.UUID
 
 data class IssuedSession(
@@ -26,6 +31,8 @@ class AuthService(
     private val passwordEncoder: PasswordEncoder,
     private val jwtService: JwtService,
     private val refreshTokenService: RefreshTokenService,
+    private val bandMembers: BandMemberRepository,
+    private val adminAccess: AdminAccess,
 ) {
 
     @Transactional
@@ -92,8 +99,9 @@ class AuthService(
         return issueSession(user)
     }
 
-    private fun issueSession(user: User): IssuedSession =
-        IssuedSession(
+    private fun issueSession(user: User): IssuedSession {
+        ensurePlatformAdminAccess(user)
+        return IssuedSession(
             userId = user.id,
             email = user.email,
             accessToken = jwtService.issueAccessToken(user.id, user.email),
@@ -101,4 +109,24 @@ class AuthService(
             refreshToken = refreshTokenService.issue(user.id),
             refreshTokenTtlSeconds = refreshTokenService.refreshCookieTtlSeconds(),
         )
+    }
+
+    /**
+     * Idempotently gives a config-listed admin OWNER membership on the
+     * PlatformBand the first time they sign in, so /admin/dna and every
+     * band-scoped DNA endpoint work for them without any special-casing in
+     * BandService. A no-op for everyone else.
+     */
+    private fun ensurePlatformAdminAccess(user: User) {
+        if (!adminAccess.isAdmin(user.email)) return
+        if (bandMembers.findByBandIdAndUserId(PlatformBand.ID, user.id) != null) return
+        bandMembers.save(
+            BandMember(
+                bandId = PlatformBand.ID,
+                userId = user.id,
+                role = BandRole.OWNER,
+                joinedAt = Instant.now(),
+            ),
+        )
+    }
 }

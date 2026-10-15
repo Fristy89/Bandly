@@ -19,6 +19,14 @@ data class AiProperties(
     val enabled: Boolean = false,
 )
 
+@ConfigurationProperties(prefix = "bandly.admin")
+data class AdminProperties(
+    /** Emails that get OWNER access to the platform band (Bandly's own
+     * Artist DNA, shown on the login screen). Comma-separated in
+     * BANDLY_ADMIN_EMAILS; empty means nobody is a platform admin. */
+    val emails: List<String> = emptyList(),
+)
+
 @ConfigurationProperties(prefix = "bandly.tts")
 data class TtsProperties(
     val enabled: Boolean = false,

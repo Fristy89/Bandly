@@ -6,8 +6,9 @@ import { useState, type FormEvent } from "react";
 import { ApiError, API_BASE } from "@/shared/api/client";
 import { useAuth } from "@/shared/auth/auth-context";
 import { Button } from "@/shared/ui/button";
-import { Card } from "@/shared/ui/card";
+import { AuthPanel } from "@/shared/ui/auth-panel";
 import { Input } from "@/shared/ui/input";
+import { ctaEnergyHandlers } from "@/shared/lib/cta-energy";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -35,7 +36,7 @@ export default function LoginPage() {
   }
 
   return (
-    <Card className="p-8">
+    <AuthPanel>
       <h1 className="font-display text-display-lg text-ink">Welcome back</h1>
       <p className="mt-1.5 text-sm text-ink-muted">
         Log in to see what actually needs you this week.
@@ -63,7 +64,7 @@ export default function LoginPage() {
             </label>
             <Link
               href="#"
-              className="text-xs text-ink-muted underline decoration-border underline-offset-4 hover:text-accent"
+              className="text-xs text-ink-muted underline decoration-border underline-offset-4 hover:text-dna-violet"
             >
               Forgot it?
             </Link>
@@ -84,8 +85,14 @@ export default function LoginPage() {
           </p>
         ) : null}
 
-        <Button type="submit" size="md" className="mt-1 w-full" loading={loading}>
-          {loading ? "Logging in" : "Log in"}
+        <Button
+          type="submit"
+          size="md"
+          className="mt-1 w-full"
+          loading={loading}
+          {...ctaEnergyHandlers}
+        >
+          {loading ? "Entering…" : "Enter your universe"}
         </Button>
       </form>
 
@@ -101,7 +108,7 @@ export default function LoginPage() {
           / CookieAuthorizationRequestRepository on the backend). */}
       <a
         href={`${API_BASE}/oauth2/authorization/google`}
-        className="mt-5 flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-border bg-surface text-sm font-medium text-ink transition-colors hover:border-border-strong hover:bg-surface-raised"
+        className="mt-5 flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] text-sm font-medium text-ink transition-colors hover:border-white/20 hover:bg-white/[0.08]"
       >
         Continue with Google
       </a>
@@ -110,11 +117,11 @@ export default function LoginPage() {
         New to Bandly?{" "}
         <Link
           href="/register"
-          className="font-medium text-accent hover:text-accent-strong"
+          className="font-medium text-dna-violet hover:text-dna-violet-strong"
         >
           Create an account
         </Link>
       </p>
-    </Card>
+    </AuthPanel>
   );
 }

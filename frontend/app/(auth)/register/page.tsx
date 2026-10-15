@@ -7,8 +7,9 @@ import { apiFetch, ApiError } from "@/shared/api/client";
 import { useAuth } from "@/shared/auth/auth-context";
 import type { BandResponse } from "@/shared/api/types";
 import { Button } from "@/shared/ui/button";
-import { Card } from "@/shared/ui/card";
+import { AuthPanel } from "@/shared/ui/auth-panel";
 import { Input } from "@/shared/ui/input";
+import { ctaEnergyHandlers } from "@/shared/lib/cta-energy";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -57,7 +58,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <Card className="p-8">
+    <AuthPanel>
       <h1 className="font-display text-display-lg text-ink">Set up Bandly</h1>
       <p className="mt-1.5 text-sm text-ink-muted">
         A few details, then straight to what&rsquo;s actually due.
@@ -106,8 +107,14 @@ export default function RegisterPage() {
           </p>
         ) : null}
 
-        <Button type="submit" size="md" className="mt-1 w-full" loading={loading}>
-          {loading ? "Setting up" : "Create account"}
+        <Button
+          type="submit"
+          size="md"
+          className="mt-1 w-full"
+          loading={loading}
+          {...ctaEnergyHandlers}
+        >
+          {loading ? "Opening…" : "Begin your universe"}
         </Button>
       </form>
 
@@ -115,11 +122,11 @@ export default function RegisterPage() {
         Already on Bandly?{" "}
         <Link
           href="/login"
-          className="font-medium text-accent hover:text-accent-strong"
+          className="font-medium text-dna-violet hover:text-dna-violet-strong"
         >
           Log in
         </Link>
       </p>
-    </Card>
+    </AuthPanel>
   );
 }

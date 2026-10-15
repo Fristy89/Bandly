@@ -32,6 +32,18 @@ const ASSET_ORDER: AssetType[] = [
   "TONE_OF_VOICE",
 ];
 
+/** One vivid hue per DNA field — cool identity colors first, warmer and
+ * more expressive ones deeper in — paired with the rising tint strength in
+ * the map below so the reveal literally gets more colorful the more of the
+ * artist it lays out. Indexed against ASSET_ORDER. */
+const DNA_CARD_ACCENTS = [
+  "var(--dna-violet)",
+  "var(--dna-cobalt)",
+  "var(--dna-teal)",
+  "var(--dna-coral)",
+  "var(--dna-yellow)",
+];
+
 /** Each rise-in step lands ~110ms after the last — the hero signature
  * first, then the palette, then the asset cards one by one — so the
  * whole DNA arrives as a single unveiling instead of a wall of text
@@ -172,12 +184,22 @@ export function DnaResults({
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-16">
+    <div className="relative mx-auto max-w-3xl overflow-hidden px-6 py-16">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 z-0 h-80 opacity-70 blur-3xl motion-safe:animate-[rise-in_0.9s_cubic-bezier(0.2,0.8,0.2,1)]"
+        style={{
+          background:
+            "radial-gradient(52% 58% at 30% 20%, var(--dna-violet), transparent 70%), radial-gradient(44% 54% at 72% 12%, var(--dna-cobalt), transparent 72%), radial-gradient(40% 48% at 58% 46%, var(--dna-coral), transparent 74%), radial-gradient(34% 40% at 42% 62%, var(--dna-yellow), transparent 76%)",
+        }}
+      />
       <header
-        className="mb-12 text-center motion-safe:animate-[rise-in_0.6s_cubic-bezier(0.2,0.8,0.2,1)]"
+        className="relative z-10 mb-12 text-center motion-safe:animate-[rise-in_0.6s_cubic-bezier(0.2,0.8,0.2,1)]"
         style={riseInDelay(0)}
       >
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-good">Your Artist DNA is ready</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-dna-violet-strong">
+          Your Artist DNA is ready
+        </p>
         {bandName ? (
           <SignatureMark
             name={bandName}
@@ -229,7 +251,7 @@ export function DnaResults({
 
       {version?.primaryColor ? (
         <div
-          className="mb-6 flex items-center gap-4 rounded-[28px] bg-surface/70 p-6 shadow-[0_1px_2px_rgba(36,32,26,0.04),0_16px_40px_-24px_rgba(36,32,26,0.18)] backdrop-blur-xl motion-safe:animate-[rise-in_0.5s_cubic-bezier(0.2,0.8,0.2,1)]"
+          className="relative z-10 mb-6 flex items-center gap-4 rounded-[28px] bg-dna-lavender/60 p-6 shadow-[0_1px_2px_rgba(36,32,26,0.04),0_16px_40px_-24px_rgba(36,32,26,0.18)] ring-1 ring-inset ring-dna-violet/20 backdrop-blur-xl motion-safe:animate-[rise-in_0.5s_cubic-bezier(0.2,0.8,0.2,1)]"
           style={riseInDelay(1)}
         >
           <div
@@ -259,7 +281,7 @@ export function DnaResults({
       ) : null}
 
       <div
-        className="mb-6 flex items-center gap-4 rounded-[28px] bg-surface/70 p-6 shadow-[0_1px_2px_rgba(36,32,26,0.04),0_16px_40px_-24px_rgba(36,32,26,0.18)] backdrop-blur-xl motion-safe:animate-[rise-in_0.5s_cubic-bezier(0.2,0.8,0.2,1)]"
+        className="relative z-10 mb-6 flex items-center gap-4 rounded-[28px] bg-surface/70 p-6 shadow-[0_1px_2px_rgba(36,32,26,0.04),0_16px_40px_-24px_rgba(36,32,26,0.18)] backdrop-blur-xl motion-safe:animate-[rise-in_0.5s_cubic-bezier(0.2,0.8,0.2,1)]"
         style={riseInDelay(1.5)}
       >
         {photo ? (
@@ -298,19 +320,25 @@ export function DnaResults({
         />
       </div>
 
-      <div className="flex flex-col gap-5">
+      <div className="relative z-10 flex flex-col gap-5">
         {ASSET_ORDER.map((type, index) => {
           const asset = byType.get(type);
           if (!asset) return null;
+          const accent = DNA_CARD_ACCENTS[index % DNA_CARD_ACCENTS.length];
           return (
-            <AssetCard
+            <div
               key={asset.id}
-              bandId={bandId}
-              label={ASSET_LABELS[type]}
-              asset={asset}
-              style={riseInDelay(2 + index)}
-              onUpdated={handleUpdated}
-            />
+              className="rounded-[28px]"
+              style={{ background: `color-mix(in oklab, ${accent} ${16 + index * 7}%, transparent)` }}
+            >
+              <AssetCard
+                bandId={bandId}
+                label={ASSET_LABELS[type]}
+                asset={asset}
+                style={riseInDelay(2 + index)}
+                onUpdated={handleUpdated}
+              />
+            </div>
           );
         })}
       </div>

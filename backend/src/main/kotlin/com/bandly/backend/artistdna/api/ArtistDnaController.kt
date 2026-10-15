@@ -94,7 +94,16 @@ class ArtistDnaController(
     }
 
     private fun toResponse(version: ArtistDnaVersion) =
-        ArtistDnaVersionResponse(version.id, version.status, version.primaryColor, version.secondaryColor, version.createdAt)
+        ArtistDnaVersionResponse(
+            version.id,
+            version.status,
+            version.primaryColor,
+            version.secondaryColor,
+            version.brandMantra,
+            version.primaryArchetype,
+            version.dnaComponents,
+            version.createdAt,
+        )
 
     /** Kicks off a streamed regeneration; the response is the job to then
      * open at GET .../generation-jobs/{jobId}/events (GenerationJobController). */

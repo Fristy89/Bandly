@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ApiError } from "@/shared/api/client";
 import { useAuth } from "@/shared/auth/auth-context";
-import { Card } from "@/shared/ui/card";
+import { AuthPanel } from "@/shared/ui/auth-panel";
 
 /**
  * Lands here after OAuth2LoginSuccessHandler redirects the browser back
@@ -45,23 +45,23 @@ export function OAuthCallbackContent() {
 
   if (error) {
     return (
-      <Card className="p-8 text-center">
+      <AuthPanel className="text-center">
         <p role="alert" className="text-sm text-attention">
           {error}
         </p>
         <Link
           href="/login"
-          className="mt-4 inline-block text-sm font-medium text-accent hover:text-accent-strong"
+          className="mt-4 inline-block text-sm font-medium text-dna-violet hover:text-dna-violet-strong"
         >
           Back to login
         </Link>
-      </Card>
+      </AuthPanel>
     );
   }
 
   return (
-    <Card className="p-8 text-center">
+    <AuthPanel className="text-center">
       <p className="text-sm text-ink-muted">Finishing sign-in…</p>
-    </Card>
+    </AuthPanel>
   );
 }

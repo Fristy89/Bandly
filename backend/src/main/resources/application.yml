@@ -47,6 +47,11 @@ bandly:
     refresh-token-ttl-days: 30
   cors:
     allowed-origins: ${BANDLY_CORS_ORIGINS:http://localhost:3000}
+  admin:
+    # Emails that get OWNER access to the platform band (Bandly's own Artist
+    # DNA — see PlatformBand / AdminAccess). Comma-separated. Defaults to the
+    # project owner so /admin/dna works out of the box in local dev.
+    emails: ${BANDLY_ADMIN_EMAILS:dpieruschka@gmail.com}
   ai:
     # Explicit feature flag, not "did someone set an API key" sniffing: predictable,
     # and it's what makes the stub adapter path a deliberate choice instead of an
